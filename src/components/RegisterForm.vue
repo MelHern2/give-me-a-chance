@@ -320,13 +320,13 @@ const handleSubmit = async () => {
 
 label {
   font-weight: 600;
-  color: #333;
+  color: var(--wa-green);
 }
 
 input, select, textarea {
   padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid var(--wa-gray);
+  border-radius: 2rem;
   font-size: 16px;
 }
 
@@ -343,9 +343,9 @@ input, select, textarea {
 }
 
 .photo-upload {
-  border: 2px dashed #ddd;
+  border: 2px dashed var(--wa-gray);
   padding: 20px;
-  border-radius: 8px;
+  border-radius: var(--wa-radius);
   text-align: center;
 }
 
@@ -366,14 +366,14 @@ input, select, textarea {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  border-radius: 8px;
+  border-radius: var(--wa-radius);
 }
 
 .remove-btn {
   position: absolute;
   top: -5px;
   right: -5px;
-  background: red;
+  background: var(--wa-danger);
   color: white;
   border: none;
   border-radius: 50%;
@@ -383,11 +383,11 @@ input, select, textarea {
 }
 
 .submit-btn {
-  background: #007bff;
+  background: var(--wa-green);
   color: white;
   padding: 15px;
   border: none;
-  border-radius: 8px;
+  border-radius: 2rem;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
@@ -395,7 +395,7 @@ input, select, textarea {
 }
 
 .submit-btn:hover:not(:disabled) {
-  background: #0056b3;
+  background: var(--wa-green-dark);
 }
 
 .submit-btn:disabled {

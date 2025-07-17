@@ -128,16 +128,16 @@ watch(() => props.modelValue, (newValue) => {
 .autocomplete-input {
   width: 100%;
   padding: 0.8rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
+  border: 1px solid var(--wa-gray);
+  border-radius: 2rem;
   font-size: 1rem;
   background-color: #fff;
   transition: border-color 0.3s ease;
 }
 
 .autocomplete-input:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+  border-color: var(--wa-green-light);
+  box-shadow: 0 0 0 0.2rem rgba(37, 211, 102, 0.25);
   outline: none;
 }
 
@@ -153,13 +153,13 @@ watch(() => props.modelValue, (newValue) => {
   left: 0;
   right: 0;
   background: white;
-  border: 1px solid #ccc;
+  border: 1px solid var(--wa-gray);
   border-top: none;
-  border-radius: 0 0 8px 8px;
+  border-radius: 0 0 var(--wa-radius) var(--wa-radius);
   max-height: 200px;
   overflow-y: auto;
   z-index: 1000;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--wa-shadow);
 }
 
 .suggestion-item {
@@ -170,7 +170,7 @@ watch(() => props.modelValue, (newValue) => {
 
 .suggestion-item:hover,
 .suggestion-item.highlighted {
-  background-color: #f8f9fa;
+  background-color: var(--wa-accent);
 }
 
 .suggestion-item:not(:last-child) {

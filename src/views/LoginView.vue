@@ -1,43 +1,22 @@
 <template>
   <div class="login-view">
-    <div class="login-container">
-      <div class="login-header">
-        <h1>Iniciar Sesión</h1>
-        <p>Accede a tu cuenta para continuar</p>
-      </div>
-      
-      <form @submit.prevent="handleSubmit" class="login-form">
+    <header class="page-header">
+      <h1>Iniciar Sesión</h1>
+      <p>Accede a tu cuenta para continuar</p>
+    </header>
+    <div class="login-container card">
+      <form class="form" @submit.prevent="handleSubmit">
         <div class="form-group">
           <label for="email">Email</label>
-          <input 
-            id="email"
-            v-model="form.email" 
-            type="email" 
-            required 
-            placeholder="tu@email.com"
-          />
+          <input id="email" v-model="form.email" type="email" required placeholder="tu@email.com" />
         </div>
-
         <div class="form-group">
           <label for="password">Contraseña</label>
-          <input 
-            id="password"
-            v-model="form.password" 
-            type="password" 
-            required 
-            placeholder="Tu contraseña"
-          />
+          <input id="password" v-model="form.password" type="password" required placeholder="Contraseña" />
         </div>
-
-        <button type="submit" :disabled="loading" class="submit-btn">
-          {{ loading ? 'Iniciando sesión...' : 'Iniciar Sesión' }}
-        </button>
+        <button type="submit" class="btn btn-primary">Iniciar Sesión</button>
       </form>
-      
-      <div class="divider">
-        <span>o</span>
-      </div>
-      
+      <div class="divider"><span>o</span></div>
       <button @click="handleGoogleLogin" :disabled="loading" class="google-btn">
         <svg width="20" height="20" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -47,7 +26,6 @@
         </svg>
         {{ loading ? 'Conectando...' : 'Iniciar sesión con Google' }}
       </button>
-      
       <div class="register-link">
         ¿No tienes una cuenta? 
         <router-link to="/register">Regístrate aquí</router-link>
@@ -114,276 +92,35 @@ const handleGoogleLogin = async () => {
 
 <style scoped>
 .login-view {
-  min-height: calc(100vh - 70px);
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  background: var(--wa-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  width: 100%;
+  padding: 2rem;
 }
-
-/* Responsive para el contenido principal */
-@media (max-width: 768px) {
-  .login-view {
-    min-height: calc(100vh - 60px);
-  }
-}
-
 .login-container {
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  max-width: 450px;
   width: 100%;
-  overflow: hidden;
-  margin: 1rem;
+  max-width: 400px;
+  margin: 0 auto;
 }
-
-/* Responsive para móvil */
-@media (max-width: 480px) {
-  .login-view {
-    padding: 0.5rem;
-    align-items: flex-start;
-    padding-top: 2rem;
-  }
-  
-  .login-container {
-    margin: 0;
-    border-radius: 16px;
-    max-width: 100%;
-  }
-}
-
-/* Responsive para tablet */
-@media (min-width: 481px) and (max-width: 768px) {
-  .login-container {
-    max-width: 500px;
-  }
-}
-
-/* Responsive para desktop */
-@media (min-width: 769px) {
-  .login-container {
-    max-width: 500px;
-  }
-}
-
-.login-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 2rem;
-  text-align: center;
-}
-
-.login-header h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 2rem;
-  font-weight: 700;
-}
-
-.login-header p {
-  margin: 0;
-  opacity: 0.9;
-  font-size: 1rem;
-}
-
-/* Responsive header */
-@media (max-width: 480px) {
-  .login-header {
-    padding: 1.5rem;
-  }
-  
-  .login-header h1 {
-    font-size: 1.75rem;
-  }
-  
-  .login-header p {
-    font-size: 0.9rem;
-  }
-}
-
-@media (min-width: 769px) {
-  .login-header h1 {
-    font-size: 2.5rem;
-  }
-  
-  .login-header p {
-    font-size: 1.1rem;
-  }
-}
-
-.login-form {
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-weight: 600;
-  color: #333;
-  font-size: 0.9rem;
-}
-
-.form-group input {
-  padding: 0.875rem;
-  border: 2px solid #e9ecef;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: all 0.3s ease;
-  min-height: 44px;
-}
-
-.form-group input:focus {
-  outline: none;
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-}
-
-/* Responsive formulario */
-@media (max-width: 480px) {
-  .login-form {
-    padding: 1.5rem;
-    gap: 1.25rem;
-  }
-  
-  .form-group input {
-    padding: 1rem;
-    font-size: 16px; /* Evita zoom en iOS */
-  }
-}
-
-.submit-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 1rem;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  min-height: 48px;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-}
-
-.submit-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-}
-
-.submit-btn:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Responsive botón submit */
-@media (max-width: 480px) {
-  .submit-btn {
-    padding: 1.125rem;
-    font-size: 1rem;
-    min-height: 52px;
-  }
-}
-
 .divider {
   text-align: center;
   margin: 1.5rem 0;
-  position: relative;
-}
-
-.divider::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: #ddd;
-}
-
-.divider span {
-  background: white;
-  padding: 0 1rem;
-  color: #666;
-  font-size: 0.9rem;
-}
-
-.google-btn {
-  width: 100%;
-  background: white;
-  color: #333;
-  border: 2px solid #e9ecef;
-  padding: 1rem;
-  border-radius: 12px;
-  font-size: 1rem;
+  color: var(--wa-green);
   font-weight: 600;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  transition: all 0.3s ease;
-  min-height: 48px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
-
-.google-btn:hover:not(:disabled) {
-  background: #f8f9fa;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-  border-color: #667eea;
-}
-
-.google-btn:disabled {
-  background: #f8f9fa;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-/* Responsive botón Google */
-@media (max-width: 480px) {
-  .google-btn {
-    padding: 1.125rem;
-    font-size: 1rem;
-    min-height: 52px;
-  }
-}
-
 .register-link {
   text-align: center;
   padding: 1.5rem;
-  background: #f8f9fa;
-  font-size: 0.9rem;
+  color: #666;
 }
-
 .register-link a {
-  color: #667eea;
+  color: var(--wa-green);
   text-decoration: none;
   font-weight: 600;
-  transition: color 0.3s ease;
 }
-
 .register-link a:hover {
-  color: #5a67d8;
   text-decoration: underline;
-}
-
-/* Responsive enlace registro */
-@media (max-width: 480px) {
-  .register-link {
-    padding: 1.25rem;
-    font-size: 0.85rem;
-  }
 }
 </style> 

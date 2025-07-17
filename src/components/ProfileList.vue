@@ -261,13 +261,13 @@ const debugAuth = () => {
 }
 
 .filters {
-  background: #f8f9fa;
+  background: var(--wa-card);
   padding: 20px;
-  border-radius: 12px;
+  border-radius: var(--wa-radius);
   height: fit-content;
   position: sticky;
   top: 20px;
-  border: 1px solid #e9ecef;
+  box-shadow: var(--wa-shadow);
 }
 
 .filter-group {
@@ -278,7 +278,7 @@ const debugAuth = () => {
   display: block;
   font-weight: 700;
   margin-bottom: 8px;
-  color: #333;
+  color: var(--wa-green);
   font-size: 0.95rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -293,7 +293,7 @@ const debugAuth = () => {
 .age-range input {
   width: 80px;
   padding: 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--wa-gray);
   border-radius: 4px;
   font-weight: 600;
 }
@@ -326,11 +326,11 @@ const debugAuth = () => {
 }
 
 .reload-btn {
-  background: #007bff;
+  background: var(--wa-green);
   color: white;
   border: none;
   padding: 12px 24px;
-  border-radius: 8px;
+  border-radius: 2rem;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
@@ -339,7 +339,7 @@ const debugAuth = () => {
 }
 
 .reload-btn:hover {
-  background: #0056b3;
+  background: var(--wa-green-dark);
 }
 
 .profiles-grid {
@@ -349,10 +349,10 @@ const debugAuth = () => {
 }
 
 .profile-card {
-  background: white;
-  border-radius: 12px;
+  background: var(--wa-card);
+  border-radius: var(--wa-radius);
   overflow: hidden;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: var(--wa-shadow);
   cursor: pointer;
   transition: transform 0.2s, box-shadow 0.2s;
 }
@@ -391,7 +391,7 @@ const debugAuth = () => {
 
 .profile-info h3 {
   margin: 0 0 8px 0;
-  color: #333;
+  color: var(--wa-green);
   font-size: 1.2rem;
 }
 
@@ -414,7 +414,7 @@ const debugAuth = () => {
 }
 
 .tag {
-  background: #007bff;
+  background: var(--wa-green);
   color: white;
   padding: 6px 12px;
   border-radius: 16px;
@@ -425,33 +425,34 @@ const debugAuth = () => {
 }
 
 .tag:nth-child(even) {
-  background: #28a745;
+  background: var(--wa-green-light);
 }
 
 .tag:nth-child(3n) {
-  background: #6f42c1;
+  background: var(--wa-green-dark);
 }
 
 .tag:nth-child(4n) {
-  background: #fd7e14;
+  background: var(--wa-accent);
+  color: #333;
 }
 
 .debug-info {
   margin-bottom: 20px;
   padding: 15px;
-  background-color: #f0f0f0;
+  background-color: var(--wa-accent);
   border-radius: 8px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--wa-gray);
   font-size: 0.9rem;
   color: #333;
 }
 
 .debug-btn {
-  background: #6c757d;
-  color: white;
+  background: var(--wa-warning);
+  color: #333;
   border: none;
   padding: 10px 20px;
-  border-radius: 8px;
+  border-radius: 2rem;
   font-size: 0.9rem;
   font-weight: 600;
   cursor: pointer;
@@ -459,7 +460,7 @@ const debugAuth = () => {
 }
 
 .debug-btn:hover {
-  background: #5a6268;
+  background: #e0a800;
 }
 
 /* Responsive */

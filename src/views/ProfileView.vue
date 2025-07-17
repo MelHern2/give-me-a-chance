@@ -1,356 +1,266 @@
 <template>
   <div class="profile-view">
     <header class="page-header">
-      <h1>Mi Perfil</h1>
-      <p>Gestiona tu información personal</p>
+      <h1>{{ isAdmin && !isOwnProfile ? 'Perfil de Usuario' : 'Mi Perfil' }}</h1>
+      <p>{{ isAdmin && !isOwnProfile ? 'Gestiona el perfil del usuario' : 'Gestiona y actualiza tu información personal' }}</p>
     </header>
-    
-    <div class="profile-container">
-      <div class="profile-card">
+
+    <div class="profile-container card">
+      <!-- Modo Visualización -->
+      <div v-if="!editMode" class="profile-display">
         <div class="profile-header">
-          <!-- Foto de perfil principal -->
           <div class="profile-photos">
-            <div v-if="displayPhotos.length" class="main-photo">
-              <img :src="displayPhotos[0]" :alt="user.name" />
+            <div v-if="displayPhotos.length > 0" class="photo-gallery">
+              <div v-for="(photo, index) in displayPhotos" :key="index" class="photo-item">
+                <img :src="photo" :alt="`Foto ${index + 1}`" />
+              </div>
             </div>
-            <div v-else class="no-photo">
-              <span>Sin foto</span>
+            <div v-else class="no-photos">
+              <p>No hay fotos disponibles</p>
             </div>
           </div>
           
           <div class="profile-basic-info">
             <h2>{{ user?.name }}, {{ user?.age }}</h2>
-            <p v-if="user?.city">{{ user?.city }}, {{ user?.region }}, {{ user?.country }}</p>
-            <p v-else-if="user?.region">{{ user?.region }}, {{ user?.country }}</p>
-            <p v-else-if="user?.country">{{ user?.country }}</p>
-            <button @click="toggleEditMode" class="edit-btn">
-              {{ editMode ? 'Cancelar' : 'Editar Perfil' }}
+            <p class="location">{{ displayCity }}</p>
+            <p class="description">{{ user?.description || 'Sin descripción' }}</p>
+          </div>
+        </div>
+
+        <div class="profile-details">
+          <div class="detail-section">
+            <h3>Información Personal</h3>
+            <div class="detail-grid">
+              <div class="detail-item">
+                <span class="label">País:</span>
+                <span class="value">{{ user?.country || 'No especificado' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Región:</span>
+                <span class="value">{{ user?.region || 'No especificado' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Religión:</span>
+                <span class="value">{{ user?.religion || 'No especificado' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Orientación Sexual:</span>
+                <span class="value">{{ user?.sexualOrientation || 'No especificado' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Orientación Política:</span>
+                <span class="value">{{ user?.politicalOrientation || 'No especificado' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Tipo de Relación:</span>
+                <span class="value">{{ user?.relationshipType || 'No especificado' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Monógamo:</span>
+                <span class="value">{{ user?.isMonogamous ? 'Sí' : 'No' }}</span>
+              </div>
+              <div class="detail-item">
+                <span class="label">Tiene Hijos:</span>
+                <span class="value">{{ user?.hasChildren ? 'Sí' : 'No' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-actions">
+          <button v-if="!isAdmin || isOwnProfile" @click="toggleEditMode" class="btn">
+            Editar Perfil
+          </button>
+          
+          <!-- Botones de administrador -->
+          <div v-if="isAdmin && !isOwnProfile" class="admin-actions">
+            <button @click="forceMatch" :disabled="forceMatchLoading" class="btn btn-warning">
+              {{ forceMatchLoading ? 'Creando Match...' : 'Forzar Match' }}
+            </button>
+            <button @click="toggleEditMode" class="btn">
+              Editar Perfil
             </button>
           </div>
         </div>
-        
-        <!-- Modo de visualización -->
-        <div v-if="!editMode" class="profile-edit">
-          <div class="form-section">
-            <h3>Información Básica</h3>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="name">Nombre</label>
-                <input id="name" :value="user?.name" type="text" disabled />
-              </div>
-              <div class="form-group">
-                <label for="age">Edad</label>
-                <input id="age" :value="user?.age" type="number" disabled />
-              </div>
-              <div class="form-group">
-                <label for="country">País</label>
-                <select id="country" :value="user?.country" disabled>
-                  <option value="">Selecciona un país</option>
-                  <option v-for="country in availableCountries" :key="country" :value="country">
-                    {{ country }}
-                  </option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="region">Región/Estado</label>
-                <select id="region" :value="user?.region" disabled>
-                  <option value="">Selecciona una región</option>
-                  <option v-for="region in availableRegions" :key="region" :value="region">
-                    {{ region }}
-                  </option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="city">Ciudad</label>
-                <AutocompleteInput
-                  id="city"
-                  v-model="displayCity"
-                  :suggestions="citySuggestions"
-                  placeholder="Busca una ciudad..."
-                  :disabled="true"
-                />
-              </div>
-            </div>
+      </div>
+
+      <!-- Modo Edición -->
+      <div v-else class="profile-edit">
+        <form @submit.prevent="saveProfile" class="form">
+          <div class="form-group">
+            <label for="name">Nombre *</label>
+            <input 
+              id="name" 
+              type="text" 
+              v-model="editForm.name" 
+              required
+            />
           </div>
-          <div class="form-section">
-            <h3>Preferencias</h3>
-            <div class="form-grid">
-              <div class="form-group">
-                <label for="religion">Religión</label>
-                <select id="religion" :value="user?.religion" disabled>
-                  <option value="">Selecciona una opción</option>
-                  <option value="catolica">Católica</option>
-                  <option value="protestante">Protestante</option>
-                  <option value="musulmana">Musulmana</option>
-                  <option value="judia">Judía</option>
-                  <option value="budista">Budista</option>
-                  <option value="hindu">Hindú</option>
-                  <option value="ateo">Ateo/Agnóstico</option>
-                  <option value="otro">Otro</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="sexualOrientation">Orientación Sexual</label>
-                <select id="sexualOrientation" :value="user?.sexualOrientation" disabled>
-                  <option value="">Selecciona una opción</option>
-                  <option value="heterosexual">Heterosexual</option>
-                  <option value="homosexual">Homosexual</option>
-                  <option value="bisexual">Bisexual</option>
-                  <option value="pansexual">Pansexual</option>
-                  <option value="asexual">Asexual</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="politicalOrientation">Orientación Política</label>
-                <select id="politicalOrientation" :value="user?.politicalOrientation" disabled>
-                  <option value="">Selecciona una opción</option>
-                  <option value="izquierda">Izquierda</option>
-                  <option value="centro-izquierda">Centro-izquierda</option>
-                  <option value="centro">Centro</option>
-                  <option value="centro-derecha">Centro-derecha</option>
-                  <option value="derecha">Derecha</option>
-                  <option value="apolitico">Apolítico</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="relationshipType">Tipo de relación que buscas</label>
-                <select id="relationshipType" :value="user?.relationshipType" disabled>
-                  <option value="">Selecciona una opción</option>
-                  <option value="seria">Relación seria</option>
-                  <option value="casual">Relación casual</option>
-                  <option value="amistad">Amistad</option>
-                  <option value="matrimonio">Matrimonio</option>
-                  <option value="poliamor">Poliamor</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>¿Es monógamo?</label>
-                <div class="radio-group">
-                  <label>
-                    <input type="radio" :checked="user?.isMonogamous === true" disabled />
-                    Sí
-                  </label>
-                  <label>
-                    <input type="radio" :checked="user?.isMonogamous === false" disabled />
-                    No
-                  </label>
-                </div>
-              </div>
-              <div class="form-group">
-                <label>¿Tienes hijos?</label>
-                <div class="radio-group">
-                  <label>
-                    <input type="radio" :checked="user?.hasChildren === true" disabled />
-                    Sí
-                  </label>
-                  <label>
-                    <input type="radio" :checked="user?.hasChildren === false" disabled />
-                    No
-                  </label>
-                </div>
-              </div>
-            </div>
+
+          <div class="form-group">
+            <label for="age">Edad *</label>
+            <input 
+              id="age" 
+              type="number" 
+              v-model="editForm.age" 
+              min="18" 
+              max="100" 
+              required
+            />
           </div>
-          <div class="form-section">
-            <h3>Descripción</h3>
-            <div class="form-group">
-              <label for="description">Cuéntanos sobre ti</label>
-              <textarea id="description" :value="user?.description" disabled rows="4" style="width:100%;resize:vertical;" />
-            </div>
+
+          <div class="form-group">
+            <label for="country">País</label>
+            <select id="country" v-model="editForm.country" @change="handleCountryChange">
+              <option value="">Seleccionar país</option>
+              <option v-for="country in availableCountries" :key="country" :value="country">
+                {{ country }}
+              </option>
+            </select>
           </div>
-          <div class="form-section">
-            <h3>Fotos</h3>
+
+          <div class="form-group">
+            <label for="region">Región/Estado</label>
+            <select id="region" v-model="editForm.region" @change="handleRegionChange">
+              <option value="">Seleccionar región</option>
+              <option v-for="region in availableRegions" :key="region" :value="region">
+                {{ region }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="city">Ciudad *</label>
+            <AutocompleteInput
+              v-model="editForm.city"
+              :suggestions="citySuggestions"
+              placeholder="Buscar ciudad..."
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="religion">Religión</label>
+            <select id="religion" v-model="editForm.religion">
+              <option value="">Seleccionar religión</option>
+              <option value="cristianismo">Cristianismo</option>
+              <option value="catolicismo">Catolicismo</option>
+              <option value="protestantismo">Protestantismo</option>
+              <option value="islam">Islam</option>
+              <option value="judaismo">Judaísmo</option>
+              <option value="hinduismo">Hinduismo</option>
+              <option value="budismo">Budismo</option>
+              <option value="ateismo">Ateísmo</option>
+              <option value="agnosticismo">Agnosticismo</option>
+              <option value="otro">Otro</option>
+              <option value="prefiero-no-decirlo">Prefiero no decirlo</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="sexualOrientation">Orientación Sexual</label>
+            <select id="sexualOrientation" v-model="editForm.sexualOrientation">
+              <option value="">Seleccionar orientación</option>
+              <option value="heterosexual">Heterosexual</option>
+              <option value="homosexual">Homosexual</option>
+              <option value="bisexual">Bisexual</option>
+              <option value="pansexual">Pansexual</option>
+              <option value="asexual">Asexual</option>
+              <option value="otro">Otro</option>
+              <option value="prefiero-no-decirlo">Prefiero no decirlo</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="politicalOrientation">Orientación Política</label>
+            <select id="politicalOrientation" v-model="editForm.politicalOrientation">
+              <option value="">Seleccionar orientación</option>
+              <option value="izquierda">Izquierda</option>
+              <option value="centro-izquierda">Centro-izquierda</option>
+              <option value="centro">Centro</option>
+              <option value="centro-derecha">Centro-derecha</option>
+              <option value="derecha">Derecha</option>
+              <option value="apolitico">Apolítico</option>
+              <option value="otro">Otro</option>
+              <option value="prefiero-no-decirlo">Prefiero no decirlo</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="relationshipType">Tipo de Relación</label>
+            <select id="relationshipType" v-model="editForm.relationshipType">
+              <option value="">Seleccionar tipo</option>
+              <option value="seria">Relación seria</option>
+              <option value="casual">Relación casual</option>
+              <option value="amistad">Amistad</option>
+              <option value="matrimonio">Matrimonio</option>
+              <option value="poliamor">Poliamor</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+
+          <div class="form-group checkbox-group">
+            <label class="wa-checkbox-label">
+              <input type="checkbox" v-model="editForm.isMonogamous" class="wa-checkbox" />
+              <span class="wa-custom-checkbox"></span>
+              Monógamo
+            </label>
+          </div>
+          <div class="form-group checkbox-group">
+            <label class="wa-checkbox-label">
+              <input type="checkbox" v-model="editForm.hasChildren" class="wa-checkbox" />
+              <span class="wa-custom-checkbox"></span>
+              Tiene hijos
+            </label>
+          </div>
+
+          <div class="form-group">
+            <label for="description">Descripción *</label>
+            <textarea 
+              id="description" 
+              v-model="editForm.description"
+              rows="4"
+              placeholder="Cuéntanos sobre ti..."
+              required
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Fotos (máximo 6)</label>
             <div class="photo-preview">
-              <div v-for="(photo, index) in displayPhotos" :key="index" class="photo-item">
+              <div v-for="(photo, index) in editForm.photos" :key="index" class="photo-item">
                 <img :src="photo" :alt="`Foto ${index + 1}`" />
+                <button 
+                  type="button" 
+                  @click="removePhoto(index)" 
+                  class="remove-btn"
+                >
+                  ×
+                </button>
               </div>
             </div>
+            
+            <input 
+              v-if="editForm.photos.length < 6"
+              type="file" 
+              @change="handlePhotoUpload" 
+              accept="image/*" 
+              multiple
+            />
+            <p class="photo-help">Sube entre 1 y 6 fotos. La primera será tu foto principal.</p>
           </div>
-        </div>
 
-        <!-- Modo de edición -->
-        <div v-else class="profile-edit">
-          <form @submit.prevent="saveProfile" class="edit-form">
-            <div class="form-section">
-              <h3>Información Básica</h3>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="name">Nombre</label>
-                  <input id="name" v-model="editForm.name" type="text" required :disabled="!editMode" />
-                </div>
-                <div class="form-group">
-                  <label for="age">Edad</label>
-                  <input id="age" v-model.number="editForm.age" type="number" min="18" max="100" required :disabled="!editMode" />
-                </div>
-                <div class="form-group">
-                  <label for="country">País</label>
-                  <select id="country" v-model="editForm.country" @change="handleCountryChange" required :disabled="!editMode">
-                    <option value="">Selecciona un país</option>
-                    <option v-for="country in availableCountries" :key="country" :value="country">
-                      {{ country }}
-                    </option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="region">Región/Estado</label>
-                  <select id="region" v-model="editForm.region" @change="handleRegionChange" required :disabled="!editMode">
-                    <option value="">Selecciona una región</option>
-                    <option v-for="region in availableRegions" :key="region" :value="region">
-                      {{ region }}
-                    </option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="city">Ciudad</label>
-                  <AutocompleteInput
-                    id="city"
-                    v-model="editForm.city"
-                    :suggestions="citySuggestions"
-                    placeholder="Busca una ciudad..."
-                    :disabled="!editMode"
-                    :required="true"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div class="form-section">
-              <h3>Preferencias</h3>
-              <div class="form-grid">
-                <div class="form-group">
-                  <label for="religion">Religión</label>
-                  <select id="religion" v-model="editForm.religion" required :disabled="!editMode">
-                    <option value="">Selecciona una opción</option>
-                    <option value="catolica">Católica</option>
-                    <option value="protestante">Protestante</option>
-                    <option value="musulmana">Musulmana</option>
-                    <option value="judia">Judía</option>
-                    <option value="budista">Budista</option>
-                    <option value="hindu">Hindú</option>
-                    <option value="ateo">Ateo/Agnóstico</option>
-                    <option value="otro">Otro</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="sexualOrientation">Orientación Sexual</label>
-                  <select id="sexualOrientation" v-model="editForm.sexualOrientation" required :disabled="!editMode">
-                    <option value="">Selecciona una opción</option>
-                    <option value="heterosexual">Heterosexual</option>
-                    <option value="homosexual">Homosexual</option>
-                    <option value="bisexual">Bisexual</option>
-                    <option value="pansexual">Pansexual</option>
-                    <option value="asexual">Asexual</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="politicalOrientation">Orientación Política</label>
-                  <select id="politicalOrientation" v-model="editForm.politicalOrientation" required :disabled="!editMode">
-                    <option value="">Selecciona una opción</option>
-                    <option value="izquierda">Izquierda</option>
-                    <option value="centro-izquierda">Centro-izquierda</option>
-                    <option value="centro">Centro</option>
-                    <option value="centro-derecha">Centro-derecha</option>
-                    <option value="derecha">Derecha</option>
-                    <option value="apolitico">Apolítico</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label for="relationshipType">Tipo de relación que buscas</label>
-                  <select id="relationshipType" v-model="editForm.relationshipType" required :disabled="!editMode">
-                    <option value="">Selecciona una opción</option>
-                    <option value="seria">Relación seria</option>
-                    <option value="casual">Relación casual</option>
-                    <option value="amistad">Amistad</option>
-                    <option value="matrimonio">Matrimonio</option>
-                    <option value="poliamor">Poliamor</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label>¿Es monógamo?</label>
-                  <div class="radio-group">
-                    <label>
-                      <input type="radio" v-model="editForm.isMonogamous" :value="true" :disabled="!editMode" />
-                      Sí
-                    </label>
-                    <label>
-                      <input type="radio" v-model="editForm.isMonogamous" :value="false" :disabled="!editMode" />
-                      No
-                    </label>
-                  </div>
-                </div>
-                <div class="form-group">
-                  <label>¿Tienes hijos?</label>
-                  <div class="radio-group">
-                    <label>
-                      <input type="radio" v-model="editForm.hasChildren" :value="true" :disabled="!editMode" />
-                      Sí
-                    </label>
-                    <label>
-                      <input type="radio" v-model="editForm.hasChildren" :value="false" :disabled="!editMode" />
-                      No
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="form-section">
-              <h3>Descripción</h3>
-              <div class="form-group">
-                <label for="description">Cuéntanos sobre ti</label>
-                <textarea 
-                  id="description" 
-                  v-model="editForm.description" 
-                  rows="4" 
-                  placeholder="Cuéntanos sobre ti..."
-                  required
-                  :disabled="!editMode"
-                ></textarea>
-              </div>
-            </div>
-
-            <div class="form-section">
-              <h3>Fotos</h3>
-              <div class="form-group">
-                <label>Subir nuevas fotos</label>
-                <input 
-                  type="file" 
-                  @change="handlePhotoUpload" 
-                  accept="image/*" 
-                  multiple
-                  ref="photoInput"
-                  :disabled="!editMode"
-                />
-                <div class="photo-preview" v-if="editForm.photos.length > 0">
-                  <div v-for="(photo, index) in editForm.photos" :key="index" class="photo-item">
-                    <img :src="photo" alt="Preview" />
-                    <button type="button" @click="removePhoto(index)" class="remove-btn" :disabled="!editMode">×</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="form-actions">
-              <button type="button" @click="toggleEditMode" class="btn btn-secondary">
-                Cancelar
-              </button>
-              <button type="submit" :disabled="saving || !editMode" class="btn btn-primary">
-                {{ saving ? 'Guardando...' : 'Guardar Cambios' }}
-              </button>
-            </div>
-          </form>
-        </div>
+          <div class="form-actions">
+            <button type="submit" :disabled="saving" class="btn btn-primary">
+              {{ saving ? 'Guardando...' : 'Guardar Cambios' }}
+            </button>
+            <button type="button" @click="toggleEditMode" class="btn btn-secondary">
+              Cancelar
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-    <button
-      v-if="isAdmin && profileUserId !== authStore.user?.id"
-      class="btn-danger"
-      :disabled="forceMatchLoading"
-      @click="forceMatch"
-      style="margin-top: 1rem;"
-    >
-      Forzar Match
-    </button>
   </div>
 </template>
 
@@ -373,6 +283,7 @@ const isAdmin = authStore.user?.isAdmin;
 const profileUserId = route.query.id as string || authStore.user?.id || '';
 
 const user = computed(() => authStore.user);
+const isOwnProfile = computed(() => !route.query.id || route.query.id === authStore.user?.id);
 
 // Computed que combina las fotos subidas con la foto de Google
 const displayPhotos = computed(() => {
@@ -566,383 +477,278 @@ onMounted(() => {
 <style scoped>
 .profile-view {
   min-height: 100vh;
-  width: 100vw;
-  background: #f8f9fa;
-  margin: 0;
-  padding: 0;
-}
-
-.page-header {
-  background: white;
-  padding: 2rem;
-  text-align: center;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-.page-header h1 {
-  margin: 0 0 0.5rem 0;
-  color: #333;
-  font-size: 2.5rem;
-}
-
-.page-header p {
-  margin: 0;
-  color: #666;
-  font-size: 1.1rem;
+  background: var(--wa-bg);
 }
 
 .profile-container {
-  width: 100vw;
-  max-width: none;
-  margin: 0;
-  padding: 2rem 0;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
 }
 
-.profile-card {
-  width: 100vw;
-  max-width: none;
-  margin: 0 auto;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-  overflow: hidden;
+.profile-display {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
 }
 
 .profile-header {
   display: flex;
   gap: 2rem;
-  padding: 2rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  align-items: flex-start;
 }
 
 .profile-photos {
   flex-shrink: 0;
 }
 
-.main-photo {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 4px solid white;
+.photo-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  max-width: 400px;
 }
 
-.main-photo img {
+.photo-item {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 1rem;
+  overflow: hidden;
+}
+
+.photo-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.no-photo {
-  width: 150px;
-  height: 150px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 4px solid white;
-}
-
-.profile-basic-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.no-photos {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  border: 2px dashed #ddd;
+  border-radius: 1rem;
 }
 
 .profile-basic-info h2 {
   margin: 0 0 0.5rem 0;
-  font-size: 2rem;
+  color: var(--wa-green);
 }
 
-.profile-basic-info p {
+.location {
+  color: #666;
   margin: 0 0 1rem 0;
-  opacity: 0.9;
 }
 
-.edit-btn {
-  background: rgba(255, 255, 255, 0.2);
-  color: white;
-  border: 2px solid white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  align-self: flex-start;
-}
-
-.edit-btn:hover {
-  background: rgba(255, 255, 255, 0.3);
+.description {
+  line-height: 1.6;
+  color: #333;
 }
 
 .profile-details {
-  padding: 2rem;
-}
-
-.detail-section {
-  margin-bottom: 2rem;
+  margin-top: 2rem;
 }
 
 .detail-section h3 {
-  color: #333;
   margin-bottom: 1rem;
-  font-size: 1.2rem;
+  color: var(--wa-green);
 }
 
 .detail-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   gap: 1rem;
 }
 
 .detail-item {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #eee;
 }
 
-.detail-item label {
+.label {
   font-weight: 600;
   color: #666;
-  font-size: 0.9rem;
 }
 
-.detail-item span {
-  color: #333;
-  font-size: 1rem;
-}
-
-.detail-section p {
-  color: #555;
-  line-height: 1.6;
-  margin: 0;
-}
-
-.photos-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 1rem;
-}
-
-.photo-item {
-  aspect-ratio: 1;
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.photo-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-/* Estilos para el modo de edición */
-.profile-edit {
-  padding: 2rem;
-}
-
-.edit-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-section {
-  background: #f0f2f5;
-  border-radius: 10px;
-  padding: 1.5rem;
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.form-section h3 {
-  margin-top: 0;
-  margin-bottom: 1.2rem;
-  color: #333;
-  font-size: 1.4rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-}
-
-.form-group label {
-  font-weight: 600;
-  color: #555;
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-}
-
-.form-group input[type="text"],
-.form-group input[type="number"],
-.form-group input[type="file"],
-.form-group select,
-.form-group textarea {
-  padding: 0.8rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 1rem;
-  background-color: #fff;
-  transition: border-color 0.3s ease;
-}
-
-.form-group input[type="text"]:focus,
-.form-group input[type="number"]:focus,
-.form-group select:focus,
-.form-group textarea:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-  outline: none;
-}
-
-.form-group input[disabled],
-.form-group select[disabled],
-.form-group textarea[disabled] {
-  background-color: #f0f0f0;
-  color: #888;
-  cursor: not-allowed;
-}
-
-.form-group textarea {
-  min-height: 100px;
-  resize: vertical;
-}
-
-.radio-group {
-  display: flex;
-  gap: 2rem;
-  margin-top: 0.5rem;
-}
-
-.radio-group label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  font-weight: 500;
+.value {
   color: #333;
 }
 
-.radio-group input[type="radio"] {
-  transform: scale(1.1);
-  accent-color: #667eea;
-}
-
-.form-actions {
+.profile-actions {
   display: flex;
-  justify-content: flex-end;
   gap: 1rem;
   margin-top: 2rem;
 }
 
-.btn {
-  padding: 0.8rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.3s ease, opacity 0.3s ease;
-}
-
-.btn-primary {
-  background-color: #667eea;
-  color: white;
-  border: none;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background-color: #5a67d8;
-}
-
-.btn-primary:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.btn-secondary {
-  background-color: #e2e8f0;
-  color: #4a5568;
-  border: 1px solid #cbd5e0;
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background-color: #edf2f7;
+.admin-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
 }
 
 .photo-preview {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: 0.8rem;
-  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 1rem;
 }
-
 .photo-item {
   position: relative;
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 8px;
+  width: 140px;
+  height: 140px;
+  border-radius: 1rem;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f7fafc;
 }
-
 .photo-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 1rem;
 }
-
 .remove-btn {
   position: absolute;
-  top: 5px;
-  right: 5px;
-  background-color: #e53e3e;
-  color: white;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background: var(--wa-danger);
+  color: #fff;
   border: none;
   border-radius: 50%;
-  width: 25px;
-  height: 25px;
+  font-size: 1.2rem;
+  font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
   cursor: pointer;
-  font-size: 1.2rem;
-  font-weight: bold;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-  z-index: 10;
+  transition: background 0.2s, transform 0.2s;
+  z-index: 2;
 }
-
 .remove-btn:hover {
-  background-color: #c53030;
+  background: #b71c1c;
+  transform: scale(1.08);
 }
 
-/* Responsive para el modo de edición */
+.photo-help {
+  font-size: 0.9rem;
+  color: #666;
+  margin-top: 0.5rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.checkbox-group {
+  margin-bottom: 1.2rem;
+  display: flex;
+  align-items: center;
+}
+.wa-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+}
+.wa-checkbox {
+  display: none;
+}
+.wa-custom-checkbox {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--wa-green);
+  background: #fff;
+  display: inline-block;
+  position: relative;
+  transition: border 0.2s, background 0.2s;
+}
+.wa-checkbox:checked + .wa-custom-checkbox {
+  background: var(--wa-green);
+  border-color: var(--wa-green);
+}
+.wa-checkbox:checked + .wa-custom-checkbox::after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 6px;
+  top: 2.5px;
+  width: 6px;
+  height: 12px;
+  border: solid #fff;
+  border-width: 0 3px 3px 0;
+  border-radius: 1px;
+  transform: rotate(45deg);
+  animation: checkmark 0.2s;
+}
+@keyframes checkmark {
+  0% { opacity: 0; transform: scale(0.5) rotate(45deg); }
+  100% { opacity: 1; transform: scale(1) rotate(45deg); }
+}
+.btn-primary {
+  background: var(--wa-green);
+  color: #fff;
+  border: none;
+  border-radius: 2rem;
+  padding: 0.7rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-right: 1rem;
+  transition: background 0.2s;
+}
+.btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.btn-secondary {
+  background: #fff;
+  color: var(--wa-green);
+  border: 1.5px solid var(--wa-green);
+  border-radius: 2rem;
+  padding: 0.7rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+.btn-secondary:hover {
+  background: var(--wa-green-light);
+  color: #fff;
+}
+
 @media (max-width: 768px) {
-  .profile-edit {
-    padding: 1rem;
+  .profile-header {
+    flex-direction: column;
   }
   
-  .form-grid {
+  .photo-gallery {
+    max-width: 100%;
+  }
+  
+  .detail-grid {
     grid-template-columns: 1fr;
   }
   
-  .form-actions {
+  .profile-actions {
     flex-direction: column;
   }
   
-  .radio-group {
+  .admin-actions {
     flex-direction: column;
-    gap: 1rem;
   }
 }
 </style> 

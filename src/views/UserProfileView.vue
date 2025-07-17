@@ -258,7 +258,7 @@ onMounted(() => {
 <style scoped>
 .user-profile-view {
   min-height: 100vh;
-  background: #f8f9fa;
+  background: var(--wa-bg);
 }
 
 .loading, .error {
@@ -271,32 +271,34 @@ onMounted(() => {
 }
 
 .profile-header {
-  background: white;
+  background: var(--wa-card);
   padding: 1rem 2rem;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: var(--wa-shadow);
   display: flex;
   align-items: center;
   gap: 1rem;
+  border-radius: var(--wa-radius);
+  margin-bottom: 1rem;
 }
 
 .back-btn {
-  background: none;
+  background: var(--wa-green);
+  color: white;
   border: none;
   font-size: 1.1rem;
-  color: #666;
   cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
   transition: background-color 0.2s;
 }
 
 .back-btn:hover {
-  background: #f0f0f0;
+  background: var(--wa-green-dark);
 }
 
 .profile-header h1 {
   margin: 0;
-  color: #333;
+  color: var(--wa-green);
   font-size: 1.8rem;
 }
 
@@ -310,11 +312,11 @@ onMounted(() => {
 
 .photo-gallery {
   position: relative;
-  background: white;
+  background: var(--wa-card);
   margin-bottom: 2rem;
-  border-radius: 12px;
+  border-radius: var(--wa-radius);
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  box-shadow: var(--wa-shadow);
   height: 500px;
   width: 100%;
   max-width: 500px;
@@ -341,7 +343,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e9ecef;
+  background: var(--wa-accent);
   color: #666;
   font-size: 1.2rem;
 }
@@ -378,17 +380,17 @@ onMounted(() => {
 }
 
 .overlay-buttons .action-btn.like {
-  background: #28a745;
+  background: var(--wa-green);
   color: white;
 }
 
 .overlay-buttons .action-btn.like:hover {
-  background: #218838;
-  box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+  background: var(--wa-green-dark);
+  box-shadow: 0 6px 20px rgba(7, 94, 84, 0.4);
 }
 
 .overlay-buttons .action-btn.dislike {
-  background: #dc3545;
+  background: var(--wa-danger);
   color: white;
 }
 
@@ -474,10 +476,10 @@ onMounted(() => {
 }
 
 .profile-info {
-  background: white;
+  background: var(--wa-card);
   padding: 2rem;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  border-radius: var(--wa-radius);
+  box-shadow: var(--wa-shadow);
 }
 
 .location p {
@@ -488,7 +490,7 @@ onMounted(() => {
 
 .description h3, .details h3 {
   margin: 0 0 1rem 0;
-  color: #333;
+  color: var(--wa-green);
   font-size: 1.3rem;
 }
 
@@ -513,12 +515,12 @@ onMounted(() => {
 
 .label {
   font-weight: 800;
-  color: #2c3e50;
+  color: var(--wa-green);
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   margin-bottom: 4px;
-  border-bottom: 2px solid #3498db;
+  border-bottom: 2px solid var(--wa-green);
   padding-bottom: 2px;
 }
 
@@ -526,10 +528,10 @@ onMounted(() => {
   color: #34495e;
   font-size: 1.1rem;
   font-weight: 600;
-  background: #ecf0f1;
+  background: var(--wa-accent);
   padding: 8px 12px;
   border-radius: 6px;
-  border-left: 4px solid #3498db;
+  border-left: 4px solid var(--wa-green);
 }
 
 .tags {
@@ -539,8 +541,8 @@ onMounted(() => {
 }
 
 .tag {
-  background: #e9ecef;
-  color: #495057;
+  background: var(--wa-green);
+  color: white;
   padding: 0.5rem 1rem;
   border-radius: 20px;
   font-size: 0.9rem;

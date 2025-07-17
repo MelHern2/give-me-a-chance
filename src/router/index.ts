@@ -45,6 +45,11 @@ const router = createRouter({
       component: UserProfileView
     },
     {
+      path: '/chat/:matchId',
+      name: 'chat',
+      component: () => import('../views/ChatView.vue')
+    },
+    {
       path: '/admin/reports',
       name: 'admin-reports',
       component: () => import('../views/AdminReportsView.vue'),

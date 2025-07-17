@@ -11,7 +11,11 @@ import {
   getDocs,
   updateDoc,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  startAfter,
+  limit,
+  getDoc,
+  setDoc
 } from 'firebase/firestore';
 
 export interface Message {
@@ -46,11 +50,32 @@ export const sendMessage = async (matchId: string, senderId: string, content: st
 
     // Actualizar el chat con el último mensaje
     const chatRef = doc(db, 'chats', matchId);
-    await updateDoc(chatRef, {
-      lastMessage: messageData,
-      updatedAt: serverTimestamp()
-    });
-
+    const chatSnap = await getDoc(chatRef);
+    if (!chatSnap.exists()) {
+      // Obtener participantes del match (buscamos en matches)
+      const matchSnap = await getDoc(doc(db, 'matches', matchId));
+      let participants = [];
+      if (matchSnap.exists()) {
+        const matchData = matchSnap.data();
+        participants = matchData.users || [];
+      } else {
+        // fallback: solo el sender
+        participants = [senderId];
+      }
+      await setDoc(chatRef, {
+        matchId,
+        participants,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        unreadCount: 0,
+        lastMessage: messageData
+      });
+    } else {
+      await updateDoc(chatRef, {
+        lastMessage: messageData,
+        updatedAt: serverTimestamp()
+      });
+    }
   } catch (error) {
     console.error('Error sending message:', error);
     throw error;
@@ -195,5 +220,39 @@ export const deleteMessage = async (messageId: string, senderId: string): Promis
   } catch (error) {
     console.error('Error deleting message:', error);
     throw error;
+  }
+}; 
+
+// Obtener mensajes paginados de un match
+export const getMessagesPaginated = async (
+  matchId: string,
+  pageSize: number = 20,
+  startAfterDoc: any = null
+): Promise<{ messages: Message[]; lastDoc: any }> => {
+  try {
+    let messagesQuery = query(
+      collection(db, 'messages'),
+      where('matchId', '==', matchId),
+      orderBy('timestamp', 'desc'),
+      limit(pageSize)
+    );
+    if (startAfterDoc) {
+      messagesQuery = query(
+        collection(db, 'messages'),
+        where('matchId', '==', matchId),
+        orderBy('timestamp', 'desc'),
+        startAfter(startAfterDoc),
+        limit(pageSize)
+      );
+    }
+    const snapshot = await getDocs(messagesQuery);
+    const messages = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    })) as Message[];
+    return { messages, lastDoc: snapshot.docs[snapshot.docs.length - 1] };
+  } catch (error) {
+    console.error('Error getting paginated messages:', error);
+    return { messages: [], lastDoc: null };
   }
 }; 

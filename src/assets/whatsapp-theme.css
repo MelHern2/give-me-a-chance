@@ -1,0 +1,241 @@
+/* WhatsApp Theme Global Styles */
+:root {
+  --wa-green: #075e54;
+  --wa-green-light: #25d366;
+  --wa-green-dark: #128c7e;
+  --wa-bg: #ece5dd;
+  --wa-card: #fff;
+  --wa-accent: #dcf8c6;
+  --wa-gray: #b2dfdb;
+  --wa-danger: #dc3545;
+  --wa-warning: #ffc107;
+  --wa-shadow: 0 2px 10px rgba(0,0,0,0.07);
+  --wa-radius: 1.2rem;
+  --wa-font: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
+}
+
+body {
+  background: var(--wa-bg);
+  font-family: var(--wa-font);
+  color: #222;
+}
+
+::-webkit-scrollbar {
+  width: 7px;
+  background: var(--wa-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--wa-gray);
+  border-radius: 4px;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--wa-gray) var(--wa-bg);
+}
+
+h1, h2, h3, h4, h5 {
+  color: var(--wa-green);
+  font-weight: 700;
+}
+
+button, .btn {
+  background: var(--wa-green);
+  color: #fff;
+  border: none;
+  border-radius: 2rem;
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-family: var(--wa-font);
+}
+button:hover, .btn:hover {
+  background: var(--wa-green-dark);
+}
+.btn-danger {
+  background: var(--wa-danger) !important;
+}
+.btn-warning {
+  background: var(--wa-warning) !important;
+  color: #333 !important;
+}
+input, textarea, select {
+  border-radius: 2rem;
+  border: 1px solid var(--wa-gray);
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  background: #fff;
+  margin-bottom: 0.5rem;
+  font-family: var(--wa-font);
+}
+input:focus, textarea:focus, select:focus {
+  outline: 2px solid var(--wa-green-light);
+  border-color: var(--wa-green-light);
+}
+.card, .match-card, .profile-card, .stat-card, .action-card, .form, .register-container, .dashboard, .no-matches, .chat-modal, .chat-view, .admin-card, .photo-preview, .suggestions-dropdown {
+  background: var(--wa-card);
+  border-radius: var(--wa-radius);
+  box-shadow: var(--wa-shadow);
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.page-header, .chat-header, .register-header, .navbar, nav, .mobile-menu-content {
+  background: var(--wa-green);
+  color: #fff;
+  padding: 1.5rem 2rem;
+  border-radius: var(--wa-radius) var(--wa-radius) 0 0;
+  margin-bottom: 1rem;
+}
+nav, .navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 60px;
+  box-shadow: var(--wa-shadow);
+}
+nav a, .navbar a, .router-link {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 500;
+  margin: 0 0.5rem;
+  transition: color 0.2s;
+}
+nav a:hover, .navbar a:hover, .router-link:hover {
+  color: var(--wa-green-light);
+}
+.matches-grid, .profiles-grid, .stats, .quick-actions, .form-group, .photo-preview, .suggestions-dropdown {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.stat-card, .action-card {
+  background: var(--wa-accent);
+  color: #222;
+  border-radius: var(--wa-radius);
+  box-shadow: var(--wa-shadow);
+  padding: 1rem 1.5rem;
+  text-align: center;
+}
+input[type="file"] {
+  border: none;
+  background: none;
+  margin: 0;
+  padding: 0;
+}
+.photo-item img {
+  border-radius: 1rem;
+  max-width: 80px;
+  max-height: 80px;
+  margin-right: 0.5rem;
+}
+.remove-btn {
+  background: var(--wa-danger);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+.suggestions-dropdown {
+  background: #fff;
+  border: 1px solid var(--wa-gray);
+  border-radius: 1rem;
+  box-shadow: var(--wa-shadow);
+  position: absolute;
+  z-index: 10;
+  width: 100%;
+  top: 100%;
+  left: 0;
+}
+.suggestion-item {
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+  border-radius: 1rem;
+  transition: background 0.2s;
+}
+.suggestion-item.highlighted, .suggestion-item:hover {
+  background: var(--wa-accent);
+}
+.form-group label {
+  font-weight: 600;
+  color: var(--wa-green);
+  margin-bottom: 0.3rem;
+}
+.form-group {
+  margin-bottom: 1rem;
+}
+.form {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+}
+.admin-link {
+  color: var(--wa-warning) !important;
+}
+.divider {
+  text-align: center;
+  margin: 1.5rem 0;
+  color: var(--wa-green);
+  font-weight: 600;
+}
+.google-btn {
+  background: #fff;
+  color: #222;
+  border: 1px solid var(--wa-gray);
+  border-radius: 2rem;
+  padding: 0.5rem 1.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.google-btn:hover {
+  background: var(--wa-accent);
+}
+/* Modales */
+.chat-modal-overlay, .modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal, .chat-modal {
+  background: var(--wa-card);
+  border-radius: var(--wa-radius);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
+  width: 100%;
+  max-width: 420px;
+  min-width: 320px;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+}
+/* Feedback */
+.loader, .loader-more {
+  text-align: center;
+  color: var(--wa-green);
+  margin: 1rem 0;
+}
+.no-messages {
+  text-align: center;
+  color: #888;
+  margin: 2rem 0;
+}
+/* Responsive */
+@media (max-width: 768px) {
+  .page-header, .chat-header, .register-header, .navbar, nav, .mobile-menu-content {
+    padding: 1rem 0.5rem;
+    font-size: 1rem;
+  }
+  .card, .match-card, .profile-card, .stat-card, .action-card, .form, .register-container, .dashboard, .no-matches, .chat-modal, .chat-view, .admin-card, .photo-preview, .suggestions-dropdown {
+    padding: 1rem;
+  }
+} 
