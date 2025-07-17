@@ -4,7 +4,7 @@
       <!-- Logo/Brand -->
       <div class="navbar-brand">
         <router-link to="/" class="navbar-logo">
-          <span class="navbar-logo-text">DatingApp</span>
+          <span class="navbar-logo-text">Give me a chance</span>
         </router-link>
       </div>
 

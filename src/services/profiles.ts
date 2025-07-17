@@ -20,10 +20,12 @@ export const getProfiles = async (currentUserId: string): Promise<UserProfile[]>
     );
     
     const querySnapshot = await getDocs(q);
+    
     const profiles: UserProfile[] = [];
     
     querySnapshot.forEach((doc) => {
       const userData = doc.data();
+      
       // Filtrar el usuario actual en el cliente
       if (userData.id !== currentUserId) {
         profiles.push({
@@ -47,9 +49,14 @@ export const getProfiles = async (currentUserId: string): Promise<UserProfile[]>
       }
     });
     
-    return profiles;
+    // Eliminar duplicados basados en el ID
+    const uniqueProfiles = profiles.filter((profile, index, self) => 
+      index === self.findIndex(p => p.id === profile.id)
+    );
+    
+    return uniqueProfiles;
   } catch (error) {
-    console.error('Error getting profiles:', error);
+    console.error('❌ Error getting profiles:', error);
     throw error;
   }
 };
@@ -127,6 +134,43 @@ export const getProfilesByFilters = async (
     return filteredProfiles;
   } catch (error) {
     console.error('Error getting filtered profiles:', error);
+    throw error;
+  }
+};
+
+export const getProfileById = async (profileId: string): Promise<UserProfile> => {
+  try {
+    // Buscar por email (que es el ID que usamos en los datos de prueba)
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, where('id', '==', profileId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      throw new Error('Perfil no encontrado');
+    }
+    
+    const userData = querySnapshot.docs[0].data();
+    
+    return {
+      id: userData.id,
+      name: userData.name,
+      age: userData.age,
+      gender: userData.gender,
+      country: userData.country,
+      region: userData.region,
+      city: userData.city,
+      religion: userData.religion,
+      isMonogamous: userData.isMonogamous,
+      sexualOrientation: userData.sexualOrientation,
+      politicalOrientation: userData.politicalOrientation,
+      hasChildren: userData.hasChildren,
+      relationshipType: userData.relationshipType,
+      description: userData.description,
+      photos: userData.photos || [],
+      location: userData.location,
+    };
+  } catch (error) {
+    console.error('Error getting profile by ID:', error);
     throw error;
   }
 }; 

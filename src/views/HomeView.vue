@@ -30,7 +30,7 @@ onMounted(() => {
   <div class="home">
     <main class="main">
       <div v-if="!isAuthenticated" class="welcome">
-        <h2>Bienvenido a DatingApp</h2>
+        <h2>Bienvenido a Give me a chance</h2>
         <p>Encuentra tu pareja ideal basándote en tus preferencias y valores</p>
         <div class="cta-buttons">
           <router-link to="/register" class="btn btn-primary">Registrarse</router-link>

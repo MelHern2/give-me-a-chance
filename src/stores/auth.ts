@@ -9,6 +9,20 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value);
 
+  // Inicializar usuario desde localStorage
+  const initUser = () => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        user.value = JSON.parse(storedUser);
+        console.log('👤 Usuario cargado desde localStorage:', user.value?.name);
+      } catch (error) {
+        console.error('Error parsing stored user:', error);
+        localStorage.removeItem('user');
+      }
+    }
+  };
+
   const setUser = async (newUser: User | null) => {
     user.value = newUser;
     
@@ -42,6 +56,9 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
+  // Inicializar automáticamente
+  initUser();
+
   return {
     user,
     loading,
@@ -51,5 +68,6 @@ export const useAuthStore = defineStore('auth', () => {
     logout,
     saveUserToStorage,
     loadUserFromStorage,
+    initUser,
   };
 }); 

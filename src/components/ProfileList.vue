@@ -87,7 +87,19 @@
       </div>
       
       <div v-else-if="filteredProfiles.length === 0" class="no-results">
-        No se encontraron perfiles con los filtros actuales
+        <p>No se encontraron perfiles con los filtros actuales</p>
+        <div class="debug-info">
+          <p><strong>Estado de autenticación:</strong></p>
+          <p>Usuario: {{ authStore.user ? authStore.user.name : 'No autenticado' }}</p>
+          <p>ID: {{ authStore.user ? authStore.user.id : 'N/A' }}</p>
+          <p>Autenticado: {{ authStore.isAuthenticated ? 'Sí' : 'No' }}</p>
+        </div>
+        <button @click="loadProfiles" class="reload-btn">
+          🔄 Recargar perfiles
+        </button>
+        <button @click="debugAuth" class="debug-btn">
+          🐛 Debug Auth
+        </button>
       </div>
       
       <div v-else class="profiles-grid">
@@ -126,16 +138,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, watch, computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useProfilesStore } from '@/stores/profiles';
 import { useAuthStore } from '@/stores/auth';
 import { getProfilesByFilters } from '@/services/profiles';
 import type { UserProfile, FilterOptions } from '@/types';
 
+const router = useRouter();
 const profilesStore = useProfilesStore();
 const authStore = useAuthStore();
 const loading = ref(false);
-const { filteredProfiles } = profilesStore;
+// Usar computed para reactividad
+const filteredProfiles = computed(() => profilesStore.filteredProfiles);
 
 const filters = reactive<FilterOptions>({
   maxDistance: 1000,
@@ -177,7 +192,7 @@ const updateFilters = () => {
 
 const viewProfile = (profile: UserProfile) => {
   // Navegar al perfil detallado
-  console.log('Ver perfil:', profile);
+  router.push({ name: 'user-profile', params: { id: profile.id } });
 };
 
 const truncateDescription = (description: string) => {
@@ -186,16 +201,19 @@ const truncateDescription = (description: string) => {
 
 const loadProfiles = async () => {
   loading.value = true;
+  
   try {
     if (!authStore.user) {
-      console.log('Usuario no autenticado');
-      return;
+      authStore.loadUserFromStorage();
+      
+      if (!authStore.user) {
+        return;
+      }
     }
 
-    // Obtener perfiles reales desde Firestore
     const profiles = await getProfilesByFilters(authStore.user.id, {
       ageRange: filters.ageRange,
-      gender: filters.gender, // Nuevo campo
+      gender: filters.gender,
       sexualOrientation: filters.sexualOrientation,
       relationshipType: filters.relationshipType,
       hasChildren: filters.hasChildren,
@@ -210,9 +228,26 @@ const loadProfiles = async () => {
   }
 };
 
+// Watcher para cuando el usuario se autentica
+watch(() => authStore.user, (newUser) => {
+  if (newUser) {
+    loadProfiles();
+  }
+}, { immediate: true });
+
 onMounted(() => {
-  loadProfiles();
+  // Si ya hay un usuario autenticado, cargar perfiles
+  if (authStore.user) {
+    loadProfiles();
+  }
 });
+
+
+
+const debugAuth = () => {
+  authStore.loadUserFromStorage();
+  loadProfiles();
+};
 </script>
 
 <style scoped>
@@ -221,6 +256,8 @@ onMounted(() => {
   grid-template-columns: 300px 1fr;
   gap: 30px;
   padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
 .filters {
@@ -228,6 +265,9 @@ onMounted(() => {
   padding: 20px;
   border-radius: 12px;
   height: fit-content;
+  position: sticky;
+  top: 20px;
+  border: 1px solid #e9ecef;
 }
 
 .filter-group {
@@ -236,9 +276,12 @@ onMounted(() => {
 
 .filter-group label {
   display: block;
-  font-weight: 600;
+  font-weight: 700;
   margin-bottom: 8px;
   color: #333;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .age-range {
@@ -252,6 +295,7 @@ onMounted(() => {
   padding: 8px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  font-weight: 600;
 }
 
 .checkbox-group {
@@ -264,7 +308,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: normal;
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.9rem;
+  color: #555;
 }
 
 .profiles {
@@ -275,6 +323,23 @@ onMounted(() => {
   text-align: center;
   padding: 40px;
   color: #666;
+}
+
+.reload-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 20px;
+}
+
+.reload-btn:hover {
+  background: #0056b3;
 }
 
 .profiles-grid {
@@ -327,6 +392,7 @@ onMounted(() => {
 .profile-info h3 {
   margin: 0 0 8px 0;
   color: #333;
+  font-size: 1.2rem;
 }
 
 .city {
@@ -348,11 +414,81 @@ onMounted(() => {
 }
 
 .tag {
-  background: #e9ecef;
-  color: #495057;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+  background: #007bff;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.tag:nth-child(even) {
+  background: #28a745;
+}
+
+.tag:nth-child(3n) {
+  background: #6f42c1;
+}
+
+.tag:nth-child(4n) {
+  background: #fd7e14;
+}
+
+.debug-info {
+  margin-bottom: 20px;
+  padding: 15px;
+  background-color: #f0f0f0;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.debug-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.debug-btn:hover {
+  background: #5a6268;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .profile-list {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 15px;
+  }
+  
+  .filters {
+    position: static;
+    order: -1;
+  }
+}
+
+@media (max-width: 768px) {
+  .profile-list {
+    padding: 10px;
+    gap: 15px;
+  }
+  
+  .profiles-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .profile-card {
+    max-width: 400px;
+    margin: 0 auto;
+  }
 }
 </style> 

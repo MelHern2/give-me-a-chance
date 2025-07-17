@@ -1,7 +1,7 @@
 @import './base.css';
 
 #app {
-  padding: 2rem;
+  padding: 0;
   font-weight: normal;
   width: 100%;
   max-width: none;
@@ -47,17 +47,4 @@ a,
 
 .btn-danger:hover, .btn-warning:hover {
   opacity: 0.9;
-}
-
-@media (min-width: 1024px) {
-  body {
-    display: flex;
-    place-items: center;
-  }
-
-  #app {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    padding: 0 2rem;
-  }
 }

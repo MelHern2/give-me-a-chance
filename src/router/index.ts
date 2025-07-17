@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue'
 import ProfilesView from '../views/ProfilesView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import LoginView from '../views/LoginView.vue'
+import UserProfileView from '../views/UserProfileView.vue'
 import { useAuthStore } from '@/stores/auth';
 
 const router = createRouter({
@@ -37,6 +38,11 @@ const router = createRouter({
       path: '/profile',
       name: 'profile',
       component: () => import('../views/ProfileView.vue')
+    },
+    {
+      path: '/user/:id',
+      name: 'user-profile',
+      component: UserProfileView
     },
     {
       path: '/admin/reports',

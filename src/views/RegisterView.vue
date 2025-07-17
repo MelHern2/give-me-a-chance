@@ -2,7 +2,7 @@
   <div class="register-view">
     <div class="register-container">
       <div class="register-header">
-        <h1>Únete a DatingApp</h1>
+        <h1>Únete a Give me a chance</h1>
         <p>Crea tu perfil y comienza a conocer personas increíbles</p>
       </div>
       
