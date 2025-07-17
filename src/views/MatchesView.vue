@@ -6,10 +6,20 @@
     </header>
     
     <div class="matches-container">
+      <div v-if="matches.length > 0" class="matches-header">
+        <h2>Matches encontrados: {{ matches.length }}</h2>
+        <button @click="loadMatches" class="btn btn-secondary">
+          🔄 Recargar
+        </button>
+      </div>
+      
       <div v-if="matches.length === 0" class="no-matches">
         <h3>Aún no tienes matches</h3>
         <p>Explora perfiles y haz match con personas que te interesen</p>
         <router-link to="/profiles" class="btn btn-primary">Explorar Perfiles</router-link>
+        <button @click="loadMatches" class="btn btn-secondary" style="margin-top: 1rem;">
+          🔄 Recargar Matches
+        </button>
       </div>
       
       <div v-else class="matches-grid">
@@ -57,11 +67,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { getMatches, deleteMatch } from '@/services/matches';
 import { createReport } from '@/services/reports';
 import { sendMessage, getMessages, subscribeToMessages } from '@/services/messaging';
 import { useAuthStore } from '@/stores/auth';
+import { getProfileById } from '@/services/profiles';
 
 const authStore = useAuthStore();
 const isAdmin = computed(() => authStore.user?.isAdmin);
@@ -97,11 +108,49 @@ const formatDate = (date: Date) => {
 
 const loadMatches = async () => {
   if (!authStore.user) return;
-  // Aquí deberías mapear los datos reales de Firestore a la UI
-  const data = await getMatches(authStore.user.id);
-  // Suponiendo que tienes los nombres, etc. en los datos de matches o puedes obtenerlos
-  matches.value = data.map(m => ({ ...m, name: '', age: 0, city: '' })); // Completar con datos reales
-  subscribeAllMatches(data);
+  
+  try {
+    console.log('🔄 Cargando matches para usuario:', authStore.user.id);
+    const data = await getMatches(authStore.user.id);
+    console.log('📊 Matches obtenidos:', data.length);
+    
+    // Obtener datos completos de cada usuario en el match
+    const matchesWithUserData = await Promise.all(
+      data.map(async (match) => {
+        // Obtener el ID del otro usuario en el match
+        const otherUserId = match.users.find(id => id !== authStore.user!.id);
+        if (!otherUserId) {
+          console.log('❌ No se encontró el otro usuario en el match');
+          return null;
+        }
+        
+        try {
+          // Obtener el perfil completo del otro usuario
+          const userProfile = await getProfileById(otherUserId);
+          console.log('👤 Perfil obtenido:', userProfile.name);
+          
+          return {
+            ...match,
+            name: userProfile.name,
+            age: userProfile.age,
+            city: userProfile.city,
+            userId: otherUserId
+          };
+        } catch (error) {
+          console.error('❌ Error obteniendo perfil de usuario:', otherUserId, error);
+          return null;
+        }
+      })
+    );
+    
+    // Filtrar matches nulos y actualizar el estado
+    matches.value = matchesWithUserData.filter(match => match !== null);
+    console.log('✅ Matches cargados:', matches.value.length);
+    
+    subscribeAllMatches(data);
+  } catch (error) {
+    console.error('❌ Error cargando matches:', error);
+  }
 };
 
 const handleUnmatch = async (matchId: string) => {
@@ -162,7 +211,19 @@ const subscribeAllMatches = (matchesList: any[]) => {
   });
 };
 
-loadMatches();
+// Cargar matches cuando el componente se monte
+onMounted(() => {
+  if (authStore.user) {
+    loadMatches();
+  }
+});
+
+// Watcher para cuando el usuario se autentica
+watch(() => authStore.user, (newUser) => {
+  if (newUser) {
+    loadMatches();
+  }
+}, { immediate: true });
 </script>
 
 <style scoped>
@@ -195,6 +256,22 @@ loadMatches();
   max-width: none;
   margin: 0;
   padding: 2rem;
+}
+
+.matches-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.matches-header h2 {
+  margin: 0;
+  color: #333;
 }
 
 .no-matches {

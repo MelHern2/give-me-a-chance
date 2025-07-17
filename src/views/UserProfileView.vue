@@ -127,6 +127,7 @@ import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { getProfileById } from '@/services/profiles';
+import { giveLike } from '@/services/likes';
 import type { UserProfile } from '@/types';
 
 const route = useRoute();
@@ -201,12 +202,21 @@ const handleLike = async () => {
   if (!profile.value || !authStore.user) return;
   
   try {
-    // Aquí implementarías la lógica para guardar el like
-    console.log('Like a:', profile.value.name);
-    // TODO: Implementar servicio de likes
+    console.log('Dando like a:', profile.value.name);
+    const result = await giveLike(authStore.user.id, profile.value.id);
+    
+    if (result.isMatch) {
+      console.log('¡Match! ID:', result.matchId);
+      // Mostrar notificación de match
+      alert(`¡Match con ${profile.value.name}!`);
+    } else {
+      console.log('Like enviado, esperando respuesta');
+    }
+    
     router.go(-1); // Volver a la lista de perfiles
   } catch (error) {
     console.error('Error al dar like:', error);
+    alert('Error al enviar el like');
   }
 };
 
@@ -214,9 +224,8 @@ const handleDislike = async () => {
   if (!profile.value || !authStore.user) return;
   
   try {
-    // Aquí implementarías la lógica para guardar el dislike
     console.log('Dislike a:', profile.value.name);
-    // TODO: Implementar servicio de dislikes
+    // TODO: Implementar servicio de dislikes si es necesario
     router.go(-1); // Volver a la lista de perfiles
   } catch (error) {
     console.error('Error al dar dislike:', error);
