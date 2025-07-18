@@ -72,6 +72,25 @@
             Editar Perfil
           </button>
           
+          <!-- Botón de verificación -->
+          <button 
+            v-if="isOwnProfile && !user?.isVerified" 
+            @click="goToVerification" 
+            class="btn btn-verify"
+          >
+            <span class="verify-icon">🔒</span> Verificar Perfil
+          </button>
+          
+          <!-- Indicador de perfil verificado -->
+          <div v-if="user?.isVerified" class="verified-badge">
+            <span class="verified-icon">✔</span> Perfil Verificado
+          </div>
+          
+          <!-- Botón de compartir -->
+          <button @click="shareProfile" class="btn btn-share">
+            <span class="share-icon">🔗</span> Compartir Perfil
+          </button>
+          
           <!-- Botones de administrador -->
           <div v-if="isAdmin && !isOwnProfile" class="admin-actions">
             <button @click="forceMatch" :disabled="forceMatchLoading" class="btn btn-warning">
@@ -271,11 +290,12 @@ import { uploadImageToImageKit } from '@/services/imagekit';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { createMatch } from '@/services/matches';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { getCountries, getRegions, getCitiesByCountry, searchCities } from '@/utils/location';
 import AutocompleteInput from '@/components/AutocompleteInput.vue';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 const editMode = ref(false);
 const saving = ref(false);
@@ -456,6 +476,50 @@ const forceMatch = async () => {
     alert('Error al forzar match');
   } finally {
     forceMatchLoading.value = false;
+  }
+};
+
+// Función para compartir el perfil
+const shareProfile = async () => {
+  const profileUrl = `${window.location.origin}/profile?id=${profileUserId}`;
+  
+  // Verificar si el navegador soporta la API de compartir
+  if (navigator.share) {
+    try {
+      await navigator.share({
+        title: `Perfil de ${user.value?.name || 'usuario'}`,
+        text: `Mira el perfil de ${user.value?.name || 'este usuario'} en Give Me a Chance`,
+        url: profileUrl
+      });
+      console.log('Perfil compartido exitosamente');
+    } catch (error) {
+      console.error('Error compartiendo perfil:', error);
+      // Si falla la API de compartir, copiar al portapapeles
+      copyToClipboard(profileUrl);
+    }
+  } else {
+    // Si no hay soporte para la API de compartir, copiar al portapapeles
+    copyToClipboard(profileUrl);
+  }
+};
+
+// Función para copiar al portapapeles
+const copyToClipboard = (text: string) => {
+  // Crear un elemento temporal
+  const el = document.createElement('textarea');
+  el.value = text;
+  document.body.appendChild(el);
+  el.select();
+  
+  try {
+    // Ejecutar el comando de copia
+    document.execCommand('copy');
+    alert('Enlace copiado al portapapeles');
+  } catch (err) {
+    console.error('Error al copiar:', err);
+    alert(`No se pudo copiar. El enlace es: ${text}`);
+  } finally {
+    document.body.removeChild(el);
   }
 };
 
@@ -730,6 +794,64 @@ onMounted(() => {
   color: #fff;
 }
 
+.btn-share {
+  background: var(--wa-accent);
+  color: #333;
+  border: none;
+  border-radius: 2rem;
+  padding: 0.7rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s;
+}
+
+.btn-share:hover {
+  background: #ffdd57;
+}
+
+.share-icon, .verify-icon {
+  font-size: 1.2rem;
+}
+
+.btn-verify {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 2rem;
+  padding: 0.7rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.2s;
+}
+
+.btn-verify:hover {
+  background: #388E3C;
+}
+
+.verified-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #E8F5E9;
+  color: #4CAF50;
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  font-weight: 600;
+  border: 1px solid #4CAF50;
+}
+
+.verified-icon {
+  font-size: 1.2rem;
+}
+
 @media (max-width: 768px) {
   .profile-header {
     flex-direction: column;
@@ -752,3 +874,7 @@ onMounted(() => {
   }
 }
 </style> 
+// Función para ir a la página de verificación
+const goToVerification = () => {
+  router.push('/verification');
+};

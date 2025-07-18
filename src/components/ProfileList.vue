@@ -1,5 +1,15 @@
 <template>
   <div class="profile-list">
+    <!-- Animación de match -->
+    <MatchAnimation 
+      v-if="showMatchAnimation && matchedUser && authStore.user" 
+      :show="showMatchAnimation" 
+      :matched-user="matchedUser" 
+      :current-user="currentUserForMatch" 
+      :match-id="matchId"
+      @close="closeMatchAnimation"
+      @send-message="sendMessageAfterMatch"
+    />
     <div class="filters">
       <h3>Filtros</h3>
       <div class="filter-group">
@@ -8,10 +18,11 @@
           type="range" 
           v-model="filters.maxDistance" 
           min="1" 
-          max="1000" 
-          @input="updateFilters"
+          max="500" 
+          @input="debounceDistanceFilter"
         />
         <span>{{ filters.maxDistance }} km</span>
+        <div v-if="loading" class="filter-loading">Aplicando filtro...</div>
       </div>
 
       <div class="filter-group">
@@ -22,7 +33,7 @@
             v-model.number="filters.ageRange[0]" 
             min="18" 
             max="100"
-            @input="updateFilters"
+            @change="applyFilters"
           />
           <span>-</span>
           <input 
@@ -30,7 +41,7 @@
             v-model.number="filters.ageRange[1]" 
             min="18" 
             max="100"
-            @input="updateFilters"
+            @change="applyFilters"
           />
         </div>
       </div>
@@ -43,7 +54,7 @@
               type="checkbox"
               :value="option.value"
               v-model="filters.gender"
-              @change="updateFilters"
+              @change="applyFilters"
             />
             {{ option.label }}
           </label>
@@ -58,7 +69,7 @@
               type="checkbox" 
               :value="orientation.value"
               v-model="filters.sexualOrientation"
-              @change="updateFilters"
+              @change="applyFilters"
             />
             {{ orientation.label }}
           </label>
@@ -73,12 +84,18 @@
               type="checkbox" 
               :value="type.value"
               v-model="filters.relationshipType"
-              @change="updateFilters"
+              @change="applyFilters"
             />
             {{ type.label }}
           </label>
         </div>
       </div>
+      
+      <button @click="applyFilters" class="apply-filters-btn">
+        🔍 Aplicar Filtros
+      </button>
+      
+
     </div>
 
     <div class="profiles">
@@ -88,18 +105,6 @@
       
       <div v-else-if="filteredProfiles.length === 0" class="no-results">
         <p>No se encontraron perfiles con los filtros actuales</p>
-        <div class="debug-info">
-          <p><strong>Estado de autenticación:</strong></p>
-          <p>Usuario: {{ authStore.user ? authStore.user.name : 'No autenticado' }}</p>
-          <p>ID: {{ authStore.user ? authStore.user.id : 'N/A' }}</p>
-          <p>Autenticado: {{ authStore.isAuthenticated ? 'Sí' : 'No' }}</p>
-        </div>
-        <button @click="loadProfiles" class="reload-btn">
-          🔄 Recargar perfiles
-        </button>
-        <button @click="debugAuth" class="debug-btn">
-          🐛 Debug Auth
-        </button>
       </div>
       
       <div v-else class="profiles-grid">
@@ -107,6 +112,10 @@
           v-for="profile in filteredProfiles" 
           :key="profile.id" 
           class="profile-card"
+          :class="{
+            'liked-profile': hasLiked(profile.id),
+            'disliked-profile': hasDisliked(profile.id)
+          }"
           @click="viewProfile(profile)"
         >
           <div class="profile-image">
@@ -130,6 +139,23 @@
               <span v-if="profile.hasChildren" class="tag">Con hijos</span>
               <span v-if="profile.isMonogamous" class="tag">Monógamo</span>
             </div>
+            
+            <div class="profile-actions">
+              <button 
+                @click="likeProfile(profile, $event)" 
+                class="action-btn like-btn"
+                :disabled="hasLiked(profile.id)"
+              >
+                {{ hasLiked(profile.id) ? '❤️' : '👍' }}
+              </button>
+              <button 
+                @click="dislikeProfile(profile, $event)" 
+                class="action-btn dislike-btn"
+                :disabled="hasDisliked(profile.id)"
+              >
+                {{ hasDisliked(profile.id) ? '💔' : '👎' }}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -138,11 +164,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, watch, computed } from 'vue';
+import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import { useProfilesStore } from '@/stores/profiles';
 import { useAuthStore } from '@/stores/auth';
-import { getProfilesByFilters } from '@/services/profiles';
+import { getProfilesByFilters, getProfiles } from '@/services/profiles';
+import { getUserLocation, calculateDistance } from '@/services/geolocation';
+import { getLikesGiven, giveLike } from '@/services/likes';
+import { getDislikesGiven, giveDislike } from '@/services/dislikes';
+import MatchAnimation from '@/components/MatchAnimation.vue';
 import type { UserProfile, FilterOptions } from '@/types';
 
 const router = useRouter();
@@ -152,8 +182,24 @@ const loading = ref(false);
 // Usar computed para reactividad
 const filteredProfiles = computed(() => profilesStore.filteredProfiles);
 
+// Almacenar los likes y dislikes del usuario
+const userLikes = ref<string[]>([]);
+const userDislikes = ref<string[]>([]);
+
+// Variables para la animación de match
+const showMatchAnimation = ref(false);
+const matchedUser = ref<UserProfile | null>(null);
+const matchId = ref<string>('');
+const currentUserForMatch = ref<any>(null);
+
+// Función para verificar si el usuario ha dado like a un perfil
+const hasLiked = (profileId: string) => userLikes.value.includes(profileId);
+
+// Función para verificar si el usuario ha dado dislike a un perfil
+const hasDisliked = (profileId: string) => userDislikes.value.includes(profileId);
+
 const filters = reactive<FilterOptions>({
-  maxDistance: 1000,
+  maxDistance: 100,
   ageRange: [18, 100],
   gender: [], // Nuevo campo
   sexualOrientation: [],
@@ -190,9 +236,196 @@ const updateFilters = () => {
   profilesStore.updateFilterOptions(filters);
 };
 
+const applyFilters = async () => {
+  // Actualizar filtros en el store primero
+  profilesStore.updateFilterOptions(filters);
+  console.log('🚩 Aplicando filtros:', filters);
+  
+  // Luego recargar perfiles con los nuevos filtros
+  loadProfiles();
+};
+
+// Variable para almacenar el temporizador de debounce
+let distanceFilterTimeout: number | null = null;
+
+// Función para aplicar el filtro de distancia con debounce
+const debounceDistanceFilter = () => {
+  // Mostrar el valor actual del filtro
+  console.log(`Ajustando filtro de distancia: ${filters.maxDistance}km`);
+  
+  // Actualizar filtros en el store inmediatamente
+  profilesStore.updateFilterOptions(filters);
+  
+  // Cancelar el temporizador anterior si existe
+  if (distanceFilterTimeout) {
+    clearTimeout(distanceFilterTimeout);
+  }
+  
+  // Establecer un nuevo temporizador
+  distanceFilterTimeout = setTimeout(() => {
+    console.log(`Aplicando filtro de distancia: ${filters.maxDistance}km`);
+    applyDistanceFilter();
+  }, 500); // Esperar 500ms para evitar demasiadas llamadas
+};
+
+// Función para aplicar el filtro de distancia
+const applyDistanceFilter = async () => {
+  console.log('📍 Aplicando filtro de distancia:', filters.maxDistance);
+  
+  loading.value = true;
+  
+  try {
+    // Verificar si tenemos ubicación para el filtro de distancia
+    if (!profilesStore.currentUserLocation) {
+      console.log('📍 Obteniendo ubicación para filtro de distancia...');
+      const location = await getUserLocation();
+      if (location) {
+        profilesStore.setCurrentUserLocation(location);
+      } else {
+        // Usar ubicación por defecto (Madrid)
+        profilesStore.setCurrentUserLocation({ latitude: 40.416775, longitude: -3.703790 });
+      }
+    }
+    
+    // Obtener todos los perfiles sin filtrar
+    if (!authStore.user) {
+      authStore.loadUserFromStorage();
+      if (!authStore.user) return;
+    }
+    
+    // Obtener todos los perfiles primero
+    const allProfiles = await getProfiles(authStore.user.id);
+    console.log(`Obtenidos ${allProfiles.length} perfiles totales`);
+    
+    // Filtrar manualmente por distancia
+    const filteredByDistance = [];
+    
+    for (const profile of allProfiles) {
+      if (profile.location && profile.location.latitude && profile.location.longitude) {
+        const distance = calculateDistance(
+          profilesStore.currentUserLocation!.latitude,
+          profilesStore.currentUserLocation!.longitude,
+          profile.location.latitude,
+          profile.location.longitude
+        );
+        
+        console.log(`Perfil ${profile.name}: distancia = ${distance}km, maxDistance = ${filters.maxDistance}km`);
+        
+        // Solo incluir perfiles dentro de la distancia máxima
+        if (distance <= filters.maxDistance) {
+          filteredByDistance.push({
+            ...profile,
+            distance: distance
+          });
+        }
+      }
+    }
+    
+    console.log(`Filtrados ${filteredByDistance.length} perfiles por distancia de ${filters.maxDistance}km`);
+    
+    // Aplicar otros filtros activos
+    let finalFiltered = filteredByDistance;
+    
+    // Filtrar por edad
+    finalFiltered = finalFiltered.filter(profile => 
+      profile.age >= filters.ageRange[0] && profile.age <= filters.ageRange[1]
+    );
+    
+    // Filtrar por orientación sexual
+    if (filters.sexualOrientation.length > 0) {
+      finalFiltered = finalFiltered.filter(profile => 
+        filters.sexualOrientation.includes(profile.sexualOrientation)
+      );
+    }
+    
+    // Filtrar por tipo de relación
+    if (filters.relationshipType.length > 0) {
+      finalFiltered = finalFiltered.filter(profile => 
+        filters.relationshipType.includes(profile.relationshipType)
+      );
+    }
+    
+    // Ordenar por distancia
+    finalFiltered.sort((a, b) => a.distance! - b.distance!);
+    
+    console.log(`Resultado final: ${finalFiltered.length} perfiles`);
+    
+    // Actualizar perfiles en el store
+    profilesStore.setProfiles(finalFiltered);
+  } catch (error) {
+    console.error('Error aplicando filtro de distancia:', error);
+  } finally {
+    loading.value = false;
+  }
+};
+
 const viewProfile = (profile: UserProfile) => {
   // Navegar al perfil detallado
   router.push({ name: 'user-profile', params: { id: profile.id } });
+};
+
+// Cerrar la animación de match
+const closeMatchAnimation = () => {
+  showMatchAnimation.value = false;
+};
+
+// Enviar mensaje después de un match
+const sendMessageAfterMatch = (matchId: string, userId: string) => {
+  router.push({ name: 'chat', params: { matchId }, query: { userId } });
+};
+
+// Función para dar like a un perfil
+const likeProfile = async (profile: UserProfile, event: Event) => {
+  event.stopPropagation(); // Evitar que se abra el perfil
+  
+  if (!authStore.user) return;
+  
+  try {
+    const result = await giveLike(authStore.user.id, profile.id);
+    userLikes.value.push(profile.id);
+    console.log(`❤️ Like dado a ${profile.name}`);
+    
+    // Si se ha generado un match, mostrar la animación
+    if (result.isMatch) {
+      console.log('💞 ¡Match generado!', result.matchId);
+      // Asegurarse de que el perfil tenga todas las propiedades necesarias
+      matchedUser.value = {
+        id: profile.id,
+        name: profile.name,
+        photos: profile.photos || []
+      };
+      
+      // Preparar datos del usuario actual
+      if (authStore.user) {
+        currentUserForMatch.value = {
+          id: authStore.user.id,
+          name: authStore.user.name,
+          photo: authStore.user.photos && authStore.user.photos.length > 0 ? authStore.user.photos[0] : null
+        };
+        console.log('Foto del usuario actual para match:', currentUserForMatch.value.photo);
+      }
+      
+      matchId.value = result.matchId || '';
+      showMatchAnimation.value = true;
+    }
+  } catch (error) {
+    console.error('Error dando like:', error);
+  }
+};
+
+// Función para dar dislike a un perfil
+const dislikeProfile = async (profile: UserProfile, event: Event) => {
+  event.stopPropagation(); // Evitar que se abra el perfil
+  
+  if (!authStore.user) return;
+  
+  try {
+    await giveDislike(authStore.user.id, profile.id);
+    userDislikes.value.push(profile.id);
+    console.log(`👎 Dislike dado a ${profile.name}`);
+  } catch (error) {
+    console.error('Error dando dislike:', error);
+  }
 };
 
 const truncateDescription = (description: string) => {
@@ -201,6 +434,8 @@ const truncateDescription = (description: string) => {
 
 const loadProfiles = async () => {
   loading.value = true;
+  console.log('🔄 Recargando perfiles con filtros:', filters);
+  console.log('📍 Ubicación actual:', profilesStore.currentUserLocation);
   
   try {
     if (!authStore.user) {
@@ -211,7 +446,15 @@ const loadProfiles = async () => {
       }
     }
 
+    // Si no hay ubicación, intentar obtenerla
+    if (!profilesStore.currentUserLocation) {
+      await getUserLocationAndSetProfiles();
+      return; // La función getUserLocationAndSetProfiles ya llama a loadProfiles
+    }
+
+    // Incluir maxDistance en los filtros
     const profiles = await getProfilesByFilters(authStore.user.id, {
+      maxDistance: filters.maxDistance,
       ageRange: filters.ageRange,
       gender: filters.gender,
       sexualOrientation: filters.sexualOrientation,
@@ -235,19 +478,76 @@ watch(() => authStore.user, (newUser) => {
   }
 }, { immediate: true });
 
-onMounted(() => {
-  // Si ya hay un usuario autenticado, cargar perfiles
-  if (authStore.user) {
+// Función para obtener la ubicación del usuario
+const getUserLocationAndSetProfiles = async () => {
+  try {
+    const location = await getUserLocation();
+    if (location) {
+      console.log('📍 Ubicación obtenida en componente:', location);
+      profilesStore.setCurrentUserLocation(location);
+    } else {
+      console.log('⚠️ No se pudo obtener la ubicación, usando ubicación por defecto');
+      // Usar ubicación por defecto (Madrid)
+      profilesStore.setCurrentUserLocation({ latitude: 40.416775, longitude: -3.703790 });
+    }
     loadProfiles();
+  } catch (error) {
+    console.error('Error obteniendo ubicación:', error);
+    // Usar ubicación por defecto en caso de error
+    profilesStore.setCurrentUserLocation({ latitude: 40.416775, longitude: -3.703790 });
+    loadProfiles();
+  }
+};
+
+// Función para cargar los likes y dislikes del usuario
+const loadUserInteractions = async () => {
+  if (!authStore.user) return;
+  
+  try {
+    // Cargar likes dados por el usuario
+    const likes = await getLikesGiven(authStore.user.id);
+    userLikes.value = likes.map(like => like.toUserId);
+    console.log(`❤️ Cargados ${userLikes.value.length} likes`);
+    
+    // Cargar dislikes dados por el usuario
+    const dislikes = await getDislikesGiven(authStore.user.id);
+    userDislikes.value = dislikes.map(dislike => dislike.toUserId);
+    console.log(`👎 Cargados ${userDislikes.value.length} dislikes`);
+  } catch (error) {
+    console.error('Error cargando interacciones del usuario:', error);
+  }
+};
+
+onMounted(async () => {
+  // Si ya hay un usuario autenticado, obtener ubicación y cargar perfiles
+  if (authStore.user) {
+    try {
+      // Obtener ubicación del usuario
+      const location = await getUserLocation();
+      if (location) {
+        profilesStore.setCurrentUserLocation(location);
+      } else {
+        // Usar ubicación por defecto
+        profilesStore.setCurrentUserLocation({ latitude: 40.416775, longitude: -3.703790 });
+      }
+      
+      // Cargar likes y dislikes del usuario
+      await loadUserInteractions();
+      
+      // Cargar perfiles con la ubicación ya establecida
+      loadProfiles();
+    } catch (error) {
+      console.error('Error obteniendo ubicación:', error);
+      // Usar ubicación por defecto en caso de error
+      profilesStore.setCurrentUserLocation({ latitude: 40.416775, longitude: -3.703790 });
+      loadProfiles();
+    }
   }
 });
 
 
 
-const debugAuth = () => {
-  authStore.loadUserFromStorage();
-  loadProfiles();
-};
+
 </script>
 
 <style scoped>
@@ -325,21 +625,114 @@ const debugAuth = () => {
   color: #666;
 }
 
-.reload-btn {
+
+
+.apply-filters-btn {
   background: var(--wa-green);
   color: white;
   border: none;
-  padding: 12px 24px;
+  padding: 12px;
   border-radius: 2rem;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
-  margin-top: 20px;
+  margin-top: 10px;
+  width: 100%;
 }
 
-.reload-btn:hover {
+.apply-filters-btn:hover {
   background: var(--wa-green-dark);
+}
+
+.distance-filter-btn {
+  background: var(--wa-accent);
+  color: #333;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 10px;
+  width: 100%;
+}
+
+.distance-filter-btn:hover {
+  background: #ffdd57;
+}
+
+.filter-loading {
+  margin-top: 8px;
+  font-size: 0.9rem;
+  color: var(--wa-green);
+  font-weight: 600;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* Estilos para perfiles con interacciones */
+.liked-profile {
+  background-color: #e6ffea !important; /* Verde pastel claro */
+  border: 1px solid #a8e6b4 !important;
+}
+
+.disliked-profile {
+  background-color: #ffe6e6 !important; /* Rojo pastel claro */
+  border: 1px solid #e6a8a8 !important;
+}
+
+.profile-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+.action-btn {
+  border: none;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.like-btn {
+  background-color: #e6ffea;
+  color: #38a169;
+}
+
+.like-btn:hover {
+  background-color: #c6f6d5;
+}
+
+.like-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.dislike-btn {
+  background-color: #ffe6e6;
+  color: #e53e3e;
+}
+
+.dislike-btn:hover {
+  background-color: #fed7d7;
+}
+
+.dislike-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
 }
 
 .profiles-grid {
@@ -437,30 +830,12 @@ const debugAuth = () => {
   color: #333;
 }
 
-.debug-info {
-  margin-bottom: 20px;
-  padding: 15px;
-  background-color: var(--wa-accent);
-  border-radius: 8px;
-  border: 1px solid var(--wa-gray);
-  font-size: 0.9rem;
-  color: #333;
-}
 
-.debug-btn {
-  background: var(--wa-warning);
-  color: #333;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 2rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
 
-.debug-btn:hover {
-  background: #e0a800;
+.filter-debug {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px dashed #ddd;
 }
 
 /* Responsive */

@@ -10,13 +10,15 @@
     "type-check": "vue-tsc --noEmit -p tsconfig.app.json --composite false",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write src/",
-    "dev": "vite --host"
+    "dev": "vite --host",
+    "download-models": "node scripts/download-face-api-models.js"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.2",
     "@capacitor/cli": "^6.2.1",
     "@capacitor/core": "^7.4.2",
     "@capacitor/push-notifications": "^7.0.1",
+    "@vladmandic/face-api": "^1.7.13",
     "axios": "^1.10.0",
     "cities-list": "^1.0.3",
     "country-region-data": "^3.1.0",

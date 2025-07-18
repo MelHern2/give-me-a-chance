@@ -60,6 +60,28 @@
       </div>
 
       <div class="form-group">
+        <label for="country">País</label>
+        <input 
+          id="country"
+          v-model="form.country" 
+          type="text" 
+          required 
+          placeholder="Tu país"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="region">Región/Estado</label>
+        <input 
+          id="region"
+          v-model="form.region" 
+          type="text" 
+          required 
+          placeholder="Tu región o estado"
+        />
+      </div>
+
+      <div class="form-group">
         <label for="city">Ciudad</label>
         <input 
           id="city"
@@ -204,6 +226,8 @@ const form = reactive({
   name: '',
   age: 18,
   gender: '', // Nuevo campo
+  country: '',
+  region: '',
   city: '',
   religion: '',
   isMonogamous: true,
@@ -256,6 +280,8 @@ const handleSubmit = async () => {
       name: form.name,
       age: form.age,
       gender: form.gender, // Nuevo campo
+      country: form.country,
+      region: form.region,
       city: form.city,
       religion: form.religion,
       isMonogamous: form.isMonogamous,
@@ -279,8 +305,8 @@ const handleSubmit = async () => {
     authStore.setUser(user);
     authStore.saveUserToStorage(user);
     
-    // Redirigir al home
-    router.push('/');
+    // Redirigir a términos (los nuevos usuarios siempre deben aceptar)
+    router.push('/terms');
     
   } catch (error: any) {
     console.error('Error en el registro:', error);

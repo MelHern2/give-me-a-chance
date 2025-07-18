@@ -80,7 +80,14 @@ export const getProfilesByFilters = async (
     // Obtener ubicación del usuario actual para filtros de distancia
     let userLocation: Location | null = null;
     if (filters.maxDistance) {
-      userLocation = await getUserLocation();
+      try {
+        userLocation = await getUserLocation();
+        console.log('📍 Ubicación obtenida:', userLocation);
+      } catch (error) {
+        console.error('Error obteniendo ubicación:', error);
+        // Usar ubicación por defecto si no se puede obtener la real
+        userLocation = { latitude: 40.416775, longitude: -3.703790 }; // Madrid como ejemplo
+      }
     }
 
     // Filtrar por género
@@ -123,7 +130,43 @@ export const getProfilesByFilters = async (
 
     // Filtrar por distancia si se especifica
     if (filters.maxDistance && userLocation) {
-      filteredProfiles = filterUsersByDistance(filteredProfiles, userLocation, filters.maxDistance);
+      console.log(`📍 Filtrando por distancia: ${filters.maxDistance}km con ubicación:`, userLocation);
+      const beforeCount = filteredProfiles.length;
+      
+      // Crear un array para almacenar perfiles con sus distancias
+      const profilesWithDistance = [];
+      
+      // Calcular distancias para cada perfil
+      for (const profile of filteredProfiles) {
+        if (profile.location && profile.location.latitude && profile.location.longitude) {
+          const distance = calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            profile.location.latitude,
+            profile.location.longitude
+          );
+          
+          console.log(`Perfil ${profile.name}: distancia = ${distance}km, maxDistance = ${filters.maxDistance}km`);
+          
+          // Solo incluir perfiles dentro de la distancia máxima
+          if (distance <= filters.maxDistance) {
+            profilesWithDistance.push({
+              ...profile,
+              distance: distance
+            });
+          }
+        }
+      }
+      
+      // Reemplazar los perfiles filtrados con los que están dentro de la distancia
+      filteredProfiles = profilesWithDistance;
+      
+      console.log(`📍 Perfiles filtrados por distancia: ${beforeCount} -> ${filteredProfiles.length}`);
+      
+      // Ordenar por distancia
+      filteredProfiles.sort((a, b) => a.distance - b.distance);
+    } else {
+      console.log('⚠️ No se pudo aplicar filtro de distancia:', { maxDistance: filters.maxDistance, hasLocation: !!userLocation });
     }
 
     // Ordenar por distancia si hay ubicación

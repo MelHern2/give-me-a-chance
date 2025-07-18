@@ -8,6 +8,9 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false);
 
   const isAuthenticated = computed(() => !!user.value);
+  const hasAcceptedTerms = computed(() => {
+    return localStorage.getItem('termsAccepted') === 'true';
+  });
 
   // Inicializar usuario desde localStorage
   const initUser = () => {
@@ -59,15 +62,22 @@ export const useAuthStore = defineStore('auth', () => {
   // Inicializar automáticamente
   initUser();
 
+  // Método para aceptar términos
+  const acceptTerms = () => {
+    localStorage.setItem('termsAccepted', 'true');
+  };
+
   return {
     user,
     loading,
     isAuthenticated,
+    hasAcceptedTerms,
     setUser,
     setLoading,
     logout,
     saveUserToStorage,
     loadUserFromStorage,
     initUser,
+    acceptTerms,
   };
 }); 

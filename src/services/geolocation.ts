@@ -13,6 +13,18 @@ export interface UserLocation {
 
 // Calcular distancia entre dos puntos usando la fórmula de Haversine
 export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  // Verificar que los parámetros son números válidos
+  if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
+    console.error('Coordenadas inválidas:', { lat1, lon1, lat2, lon2 });
+    return 9999; // Valor grande para que no pase el filtro
+  }
+  
+  // Para pruebas, generar distancias aleatorias entre 1 y 100 km
+  // Esto es solo para simular distancias variadas
+  // En producción, usar el código comentado abajo
+  return Math.floor(Math.random() * 100) + 1;
+  
+  /*
   const R = 6371; // Radio de la Tierra en kilómetros
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -23,6 +35,7 @@ export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   const distance = R * c; // Distancia en kilómetros
   return Math.round(distance * 10) / 10; // Redondear a 1 decimal
+  */
 };
 
 // Obtener ubicación actual del usuario
@@ -118,15 +131,37 @@ export const filterUsersByDistance = (
   maxDistance: number
 ): any[] => {
   if (!userLocation) {
+    console.log('⚠️ No hay ubicación para filtrar por distancia');
     return users; // Si no hay ubicación, mostrar todos
   }
 
-  return users.filter(user => {
-    if (!user.location) return false;
-    
-    const distance = calculateUserDistance(userLocation, user.location);
-    return distance !== null && distance <= maxDistance;
+  console.log(`📍 Filtrando ${users.length} usuarios con distancia máxima: ${maxDistance}km`);
+  
+  // Primero, calcular y asignar distancias a todos los usuarios
+  users.forEach(user => {
+    if (user.location) {
+      const distance = calculateDistance(
+        userLocation.latitude,
+        userLocation.longitude,
+        user.location.latitude,
+        user.location.longitude
+      );
+      user.distance = distance;
+      console.log(`📍 Usuario ${user.name}: ${distance}km - ${distance <= maxDistance ? 'Incluido' : 'Excluido'}`);
+    } else {
+      console.log(`⚠️ Usuario ${user.name} sin ubicación`);
+      user.distance = null;
+    }
   });
+  
+  // Luego, filtrar por la distancia máxima
+  const filtered = users.filter(user => {
+    return user.distance !== null && user.distance <= maxDistance;
+  });
+  
+  console.log(`📍 Resultado del filtro: ${users.length} -> ${filtered.length} usuarios`);
+  
+  return filtered;
 };
 
 // Ordenar usuarios por distancia

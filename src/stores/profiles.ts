@@ -9,7 +9,7 @@ export const useProfilesStore = defineStore('profiles', () => {
   const currentUserLocation = ref<{ latitude: number; longitude: number } | null>(null);
 
   const filterOptions = ref<FilterOptions>({
-    maxDistance: 50,
+    maxDistance: 100,
     ageRange: [18, 100],
     gender: [], // Agregar campo faltante
     sexualOrientation: [],

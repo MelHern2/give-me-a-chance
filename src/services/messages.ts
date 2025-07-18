@@ -4,13 +4,23 @@ import { db } from '@/config/firebase';
 import type { Message } from '@/types';
 import { pushNotificationService } from './pushNotifications';
 
+import { doc, updateDoc } from 'firebase/firestore';
+
 export const sendMessage = async (matchId: string, senderId: string, content: string): Promise<void> => {
   try {
+    // Guardar el mensaje
     await addDoc(collection(db, 'messages'), {
       matchId,
       senderId,
       content,
       createdAt: serverTimestamp(),
+    });
+
+    // Actualizar el match con el último mensaje
+    await updateDoc(doc(db, 'matches', matchId), {
+      lastMessage: content,
+      lastMessageAt: serverTimestamp(),
+      hasMessages: true, // Marcar que el match ya tiene mensajes
     });
 
     // Enviar notificación push al destinatario

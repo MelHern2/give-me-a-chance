@@ -20,6 +20,9 @@ export interface User {
     longitude: number;
   };
   isAdmin: boolean;
+  isVerified?: boolean;
+  verifiedAt?: Date;
+  verificationPhoto?: string;
   fcmToken?: string; // Token para notificaciones push
   createdAt: Date;
   updatedAt: Date;

@@ -4,32 +4,58 @@
       <h1>Mis Matches</h1>
       <p>Personas con las que has hecho match</p>
     </header>
-    <div class="matches-container matches-grid">
-      <div v-if="matches.length > 0" class="matches-header card">
-        <h2>Matches encontrados: {{ matches.length }}</h2>
-        <button @click="loadMatches" class="btn btn-secondary">🔄 Recargar</button>
-      </div>
-      <div v-if="matches.length === 0" class="no-matches card">
+    <div class="matches-container">
+      <!-- Sin matches -->
+      <div v-if="matches.length === 0 && pendingMatches.length === 0" class="no-matches card">
         <h3>Aún no tienes matches</h3>
         <p>Explora perfiles y haz match con personas que te interesen</p>
         <router-link to="/profiles" class="btn">Explorar Perfiles</router-link>
-        <button @click="loadMatches" class="btn btn-secondary" style="margin-top: 1rem;">🔄 Recargar Matches</button>
       </div>
-      <div v-else class="matches-grid">
-        <div v-for="match in matches" :key="match.id" class="match-card card">
-          <div class="match-info">
-            <h3>{{ match.name }}, {{ match.age }}</h3>
-            <p>{{ match.city }}</p>
-            <p class="match-date">Match desde {{ formatDate(match.createdAt) }}</p>
+      
+      <!-- Matches pendientes (nuevos) -->
+      <div v-if="pendingMatches.length > 0" class="pending-matches-section">
+        <h2 class="section-title">🔔 Matches nuevos ({{ pendingMatches.length }})</h2>
+        <p class="section-subtitle">Estos matches están esperando tu primer mensaje</p>
+        
+        <div class="matches-list">
+          <div v-for="match in pendingMatches" :key="match.id" class="match-list-item pending-item">
+            <div class="match-avatar">
+              <img :src="match.photo || '/default-avatar.png'" :alt="match.name">
+              <div class="pending-badge">🔔</div>
+            </div>
+            <div class="match-list-info">
+              <h3>{{ match.name }}, {{ match.age }}</h3>
+              <p>{{ match.city }}</p>
+            </div>
+            <div class="match-list-actions">
+              <button class="btn btn-primary" @click="openChat(match.id, match.userId)">
+                Mensaje
+              </button>
+            </div>
           </div>
-          <div class="match-actions">
-            <button :class="isAdmin ? 'btn-danger' : 'btn'" @click="openChat(match.id, match.userId)">
-              Enviar Mensaje
-              <span v-if="newMessageNotification[match.id]" class="msg-badge">●</span>
-            </button>
-            <button class="btn btn-secondary">Ver Perfil</button>
-            <button class="btn btn-danger" @click="handleUnmatch(match.id)">Deshacer Match</button>
-            <button class="btn btn-warning" @click="handleReport(match.users?.find(u => u !== authStore.user?.id) || '')">Reportar Usuario</button>
+        </div>
+      </div>
+      
+      <!-- Matches con conversaciones (antiguos) -->
+      <div v-if="regularMatches.length > 0" class="regular-matches-section">
+        <h2 class="section-title">Conversaciones activas ({{ regularMatches.length }})</h2>
+        
+        <div class="matches-list">
+          <div v-for="match in regularMatches" :key="match.id" class="match-list-item">
+            <div class="match-avatar">
+              <img :src="match.photo || '/default-avatar.png'" :alt="match.name">
+              <div v-if="newMessageNotification[match.id]" class="notification-badge">💬</div>
+            </div>
+            <div class="match-list-info">
+              <h3>{{ match.name }}, {{ match.age }}</h3>
+              <p>{{ match.city }}</p>
+            </div>
+            <div class="match-list-actions">
+              <button class="btn btn-primary" @click="openChat(match.id, match.userId)">
+                Mensaje
+                <span v-if="newMessageNotification[match.id]" class="msg-badge">●</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -39,17 +65,23 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, nextTick } from 'vue';
 import { getMatches, deleteMatch } from '@/services/matches';
 import { createReport } from '@/services/reports';
 import { sendMessage, getMessages, subscribeToMessages } from '@/services/messaging';
 import { useAuthStore } from '@/stores/auth';
 import { getProfileById } from '@/services/profiles';
+import { getPendingMatches, type PendingMatch } from '@/services/pendingMatches';
 import { useRouter } from 'vue-router';
 import ChatView from './ChatView.vue';
 
 const authStore = useAuthStore();
 const isAdmin = computed(() => authStore.user?.isAdmin);
+
+// Propiedad computada para obtener los matches regulares (no pendientes)
+const regularMatches = computed(() => {
+  return matches.value.filter(match => !isPendingMatch(match.id));
+});
 const router = useRouter();
 
 interface Match {
@@ -57,11 +89,15 @@ interface Match {
   name: string;
   age: number;
   city: string;
+  photo?: string;
   createdAt: Date;
   users?: [string, string];
+  userId?: string;
 }
 
 const matches = ref<Match[]>([]);
+const pendingMatches = ref<PendingMatch[]>([]);
+const pendingMatchIds = ref<string[]>([]);
 
 // Chat state
 const showChat = ref(false);
@@ -110,6 +146,7 @@ const loadMatches = async () => {
             name: userProfile.name,
             age: userProfile.age,
             city: userProfile.city,
+            photo: userProfile.photos && userProfile.photos.length > 0 ? userProfile.photos[0] : '',
             userId: otherUserId
           };
         } catch (error) {
@@ -123,10 +160,32 @@ const loadMatches = async () => {
     matches.value = matchesWithUserData.filter(match => match !== null);
     console.log('✅ Matches cargados:', matches.value.length);
     
+    // Cargar matches pendientes (sin mensajes)
+    loadPendingMatches();
+    
     subscribeAllMatches(data);
   } catch (error) {
     console.error('❌ Error cargando matches:', error);
   }
+};
+
+const loadPendingMatches = async () => {
+  if (!authStore.user) return;
+  
+  try {
+    console.log('🔄 Cargando matches pendientes...');
+    const pending = await getPendingMatches(authStore.user.id);
+    pendingMatches.value = pending;
+    pendingMatchIds.value = pending.map(match => match.id);
+    console.log('✅ Matches pendientes cargados:', pendingMatches.value.length);
+  } catch (error) {
+    console.error('❌ Error cargando matches pendientes:', error);
+  }
+};
+
+// Función para verificar si un match está pendiente
+const isPendingMatch = (matchId: string): boolean => {
+  return pendingMatchIds.value.includes(matchId);
 };
 
 const handleUnmatch = async (matchId: string) => {
@@ -147,10 +206,22 @@ const handleReport = async (reportedUserId: string) => {
   alert('Usuario reportado. ¡Gracias por ayudarnos a mantener la comunidad segura!');
 };
 
-const openChat = (matchId: string, userId: string) => {
+const openChat = async (matchId: string, userId: string) => {
   selectedMatchId.value = matchId;
   selectedUserId.value = userId;
   showChat.value = true;
+  
+  // Si es un match pendiente, moverlo a conversaciones activas
+  if (isPendingMatch(matchId)) {
+    // Eliminar de la lista de matches pendientes
+    pendingMatchIds.value = pendingMatchIds.value.filter(id => id !== matchId);
+    
+    // Actualizar la lista de matches pendientes
+    pendingMatches.value = pendingMatches.value.filter(match => match.id !== matchId);
+    
+    // Forzar actualización de la vista
+    await nextTick();
+  }
 };
 
 const closeChat = () => {
@@ -205,7 +276,8 @@ watch(() => authStore.user, (newUser) => {
 }
 .matches-container {
   width: 100%;
-  margin: 0;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 2rem;
 }
 .matches-header {
@@ -218,31 +290,133 @@ watch(() => authStore.user, (newUser) => {
   text-align: center;
   padding: 4rem 2rem;
 }
-.match-card {
+.section-title {
+  color: var(--wa-green);
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.section-subtitle {
+  color: #666;
+  margin-bottom: 1.5rem;
+}
+
+.pending-matches-section {
+  margin-bottom: 3rem;
+}
+
+.regular-matches-section {
+  margin-bottom: 2rem;
+}
+
+.pending-card {
+  border: 2px solid var(--wa-green);
+}
+
+/* Estilos para formato lista */
+.matches-list {
   display: flex;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 2rem;
+}
+
+.match-list-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  transition: transform 0.2s;
+}
+
+.match-list-item:hover {
+  transform: translateX(5px);
+}
+
+.pending-item {
+  border-left: 4px solid var(--wa-green);
+}
+
+.match-avatar {
+  position: relative;
+  margin-right: 1rem;
+  width: 60px;
+  height: 60px;
+}
+
+.match-avatar img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.match-list-info {
+  flex: 1;
+}
+
+.match-list-info h3 {
+  margin: 0 0 0.25rem 0;
+  color: var(--wa-green);
+  font-size: 1.1rem;
+}
+
+.match-list-info p {
+  margin: 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.match-list-actions {
+  display: flex;
   align-items: center;
 }
-.match-info h3 {
-  margin: 0 0 0.5rem 0;
-  color: var(--wa-green);
-}
-.match-info p {
-  margin: 0 0 0.25rem 0;
-  color: #666;
-}
-.match-date {
-  font-size: 0.9rem;
-  color: #999;
-}
-.match-actions {
+
+.notification-badge {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  background: var(--wa-accent);
+  color: #333;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
   display: flex;
-  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  border: 2px solid white;
 }
 .msg-badge {
   color: var(--wa-danger);
   font-size: 1.2em;
   margin-left: 6px;
   vertical-align: middle;
+}
+
+/* Estilos para el indicador de match pendiente */
+.pending-badge {
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  background: var(--wa-green);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  animation: pulse 1.5s infinite;
+  border: 2px solid white;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
 </style> 

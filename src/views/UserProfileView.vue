@@ -111,13 +111,37 @@
             <span v-if="profile.hasChildren" class="tag">Con hijos</span>
             <span v-if="profile.isMonogamous" class="tag">Monógamo</span>
           </div>
+          
+          <!-- Opciones de compartir -->
+          <div class="share-container">
+            <h3>Compartir perfil</h3>
+            <div class="share-options">
+              <a :href="getWhatsAppShareUrl()" target="_blank" class="share-option whatsapp">
+                <span class="share-icon">💬</span> WhatsApp
+              </a>
+              <a :href="getFacebookShareUrl()" target="_blank" class="share-option facebook">
+                <span class="share-icon">f</span> Facebook
+              </a>
+              <a :href="getEmailShareUrl()" class="share-option email">
+                <span class="share-icon">✉️</span> Email
+              </a>
+              <button @click="copyLinkToClipboard" class="share-option copy">
+                <span class="share-icon">🔗</span> Copiar enlace
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-
+    
     <div v-else class="error">
       <p>Perfil no encontrado</p>
       <button @click="$router.go(-1)" class="back-btn">Volver</button>
+    </div>
+    
+    <!-- Mensaje de copiado -->
+    <div v-if="showCopyMessage" class="copy-message">
+      Enlace copiado al portapapeles
     </div>
   </div>
 </template>
@@ -232,6 +256,55 @@ const handleDislike = async () => {
   }
 };
 
+// Variables para el mensaje de copiado
+const showCopyMessage = ref(false);
+
+// Obtener la URL del perfil
+const getProfileUrl = () => {
+  if (!profile.value) return '';
+  return `${window.location.origin}/user-profile/${profile.value.id}`;
+};
+
+// Obtener el texto para compartir
+const getShareText = () => {
+  if (!profile.value) return '';
+  return `Mira el perfil de ${profile.value.name} en Give Me a Chance`;
+};
+
+// URL para compartir por WhatsApp
+const getWhatsAppShareUrl = () => {
+  const text = encodeURIComponent(`${getShareText()} ${getProfileUrl()}`);
+  return `https://wa.me/?text=${text}`;
+};
+
+// URL para compartir por Facebook
+const getFacebookShareUrl = () => {
+  const url = encodeURIComponent(getProfileUrl());
+  return `https://www.facebook.com/sharer/sharer.php?u=${url}`;
+};
+
+// URL para compartir por Email
+const getEmailShareUrl = () => {
+  const subject = encodeURIComponent(`Perfil de ${profile.value?.name} en Give Me a Chance`);
+  const body = encodeURIComponent(`${getShareText()}\n\n${getProfileUrl()}`);
+  return `mailto:?subject=${subject}&body=${body}`;
+};
+
+// Función para copiar el enlace al portapapeles
+const copyLinkToClipboard = () => {
+  const url = getProfileUrl();
+  navigator.clipboard.writeText(url).then(() => {
+    showCopyMessage.value = true;
+    setTimeout(() => {
+      showCopyMessage.value = false;
+    }, 2000);
+  }).catch(err => {
+    console.error('Error al copiar:', err);
+  });
+};
+
+// Esta función ya no es necesaria, se reemplazó por copyLinkToClipboard
+
 const loadProfile = async () => {
   const profileId = route.params.id as string;
   
@@ -279,6 +352,99 @@ onMounted(() => {
   gap: 1rem;
   border-radius: var(--wa-radius);
   margin-bottom: 1rem;
+  justify-content: space-between;
+}
+
+.profile-header h1 {
+  flex-grow: 1;
+}
+
+.share-container {
+  margin-top: 2rem;
+  text-align: center;
+}
+
+.share-container h3 {
+  color: var(--wa-green);
+  margin-bottom: 1rem;
+}
+
+.share-options {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.share-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.2rem;
+  border-radius: 2rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.share-option:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.share-icon {
+  font-size: 1.2rem;
+}
+
+.whatsapp {
+  background: #25D366;
+  color: white;
+}
+
+.facebook {
+  background: #1877F2;
+  color: white;
+}
+
+.email {
+  background: #DB4437;
+  color: white;
+}
+
+.copy {
+  background: var(--wa-accent);
+  color: #333;
+  border: none;
+}
+
+.copy:hover {
+  background: #ffdd57;
+}
+
+/* Mensaje de copiado */
+.copy-message {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border-radius: 2rem;
+  font-size: 0.9rem;
+  z-index: 1000;
+  animation: fadeInOut 2s ease-in-out;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .back-btn {

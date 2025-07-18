@@ -55,7 +55,13 @@ const handleSubmit = async () => {
     const user = await loginUser(form.email, form.password);
     authStore.setUser(user);
     authStore.saveUserToStorage(user);
-    router.push('/');
+    
+    // Verificar si el usuario ha aceptado los términos
+    if (!authStore.hasAcceptedTerms) {
+      router.push('/terms');
+    } else {
+      router.push('/');
+    }
   } catch (error: any) {
     console.error('Error en el login:', error);
     let errorMessage = 'Error en el login';
@@ -80,7 +86,13 @@ const handleGoogleLogin = async () => {
     const user = await loginWithGoogle();
     authStore.setUser(user);
     authStore.saveUserToStorage(user);
-    router.push('/');
+    
+    // Verificar si el usuario ha aceptado los términos
+    if (!authStore.hasAcceptedTerms) {
+      router.push('/terms');
+    } else {
+      router.push('/');
+    }
   } catch (error: any) {
     console.error('Error en el login con Google:', error);
     alert('Error al iniciar sesión con Google');
