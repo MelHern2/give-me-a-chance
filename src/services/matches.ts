@@ -35,9 +35,21 @@ export const getMatches = async (userId: string): Promise<Match[]> => {
 
 export const deleteMatch = async (matchId: string): Promise<void> => {
   try {
+    // 1. Eliminar el match
     await deleteDoc(doc(db, 'matches', matchId));
+
+    // 2. Eliminar el chat asociado (id = matchId)
+    await deleteDoc(doc(db, 'chats', matchId));
+
+    // 3. Eliminar todos los mensajes asociados a ese match
+    const messagesQuery = query(collection(db, 'messages'), where('matchId', '==', matchId));
+    const messagesSnapshot = await getDocs(messagesQuery);
+    const deletePromises = messagesSnapshot.docs.map(docSnap => deleteDoc(docSnap.ref));
+    await Promise.all(deletePromises);
+
+    console.log('✅ Match, chat y mensajes eliminados correctamente');
   } catch (error) {
-    console.error('Error deleting match:', error);
+    console.error('Error deleting match, chat o mensajes:', error);
     throw error;
   }
 };
@@ -70,5 +82,20 @@ export const createMatch = async (userA: string, userB: string): Promise<string>
   } catch (error) {
     console.error('❌ Error creating match:', error);
     throw error;
+  }
+}; 
+
+export const getMatchIdBetweenUsers = async (userA: string, userB: string): Promise<string | undefined> => {
+  try {
+    const matchesRef = collection(db, 'matches');
+    const q = query(matchesRef, where('users', 'in', [[userA, userB], [userB, userA]]));
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      return querySnapshot.docs[0].id;
+    }
+    return undefined;
+  } catch (error) {
+    console.error('Error getting matchId between users:', error);
+    return undefined;
   }
 }; 

@@ -3,6 +3,8 @@
   --wa-green: #075e54;
   --wa-green-light: #25d366;
   --wa-green-dark: #128c7e;
+  --wa-primary: #007bff;
+  --wa-primary-dark: #0056b3;
   --wa-bg: #ece5dd;
   --wa-card: #fff;
   --wa-accent: #dcf8c6;
@@ -18,6 +20,11 @@ body {
   background: var(--wa-bg);
   font-family: var(--wa-font);
   color: #222;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 ::-webkit-scrollbar {
@@ -36,6 +43,7 @@ body {
 h1, h2, h3, h4, h5 {
   color: var(--wa-green);
   font-weight: 700;
+  margin: 0;
 }
 
 button, .btn {
@@ -48,6 +56,12 @@ button, .btn {
   cursor: pointer;
   transition: background 0.2s;
   font-family: var(--wa-font);
+  min-height: 44px; /* Para accesibilidad en móvil */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  white-space: nowrap;
 }
 button:hover, .btn:hover {
   background: var(--wa-green-dark);
@@ -59,6 +73,7 @@ button:hover, .btn:hover {
   background: var(--wa-warning) !important;
   color: #333 !important;
 }
+
 input, textarea, select {
   border-radius: 2rem;
   border: 1px solid var(--wa-gray);
@@ -67,18 +82,24 @@ input, textarea, select {
   background: #fff;
   margin-bottom: 0.5rem;
   font-family: var(--wa-font);
+  min-height: 44px; /* Para accesibilidad en móvil */
+  width: 100%;
+  box-sizing: border-box;
 }
 input:focus, textarea:focus, select:focus {
   outline: 2px solid var(--wa-green-light);
   border-color: var(--wa-green-light);
 }
+
 .card, .match-card, .profile-card, .stat-card, .action-card, .form, .register-container, .dashboard, .no-matches, .chat-modal, .chat-view, .admin-card, .photo-preview, .suggestions-dropdown {
   background: var(--wa-card);
   border-radius: var(--wa-radius);
   box-shadow: var(--wa-shadow);
   padding: 1.5rem;
   margin-bottom: 1rem;
+  overflow: hidden;
 }
+
 .page-header, .chat-header, .register-header, .navbar, nav, .mobile-menu-content {
   background: var(--wa-green);
   color: #fff;
@@ -86,6 +107,7 @@ input:focus, textarea:focus, select:focus {
   border-radius: var(--wa-radius) var(--wa-radius) 0 0;
   margin-bottom: 1rem;
 }
+
 nav, .navbar {
   display: flex;
   align-items: center;
@@ -93,6 +115,7 @@ nav, .navbar {
   min-height: 60px;
   box-shadow: var(--wa-shadow);
 }
+
 nav a, .navbar a, .router-link {
   color: #fff;
   text-decoration: none;
@@ -100,14 +123,17 @@ nav a, .navbar a, .router-link {
   margin: 0 0.5rem;
   transition: color 0.2s;
 }
+
 nav a:hover, .navbar a:hover, .router-link:hover {
   color: var(--wa-green-light);
 }
+
 .matches-grid, .profiles-grid, .stats, .quick-actions, .form-group, .photo-preview, .suggestions-dropdown {
   display: flex;
   flex-direction: column;
   gap: 1rem;
 }
+
 .stat-card, .action-card {
   background: var(--wa-accent);
   color: #222;
@@ -116,18 +142,22 @@ nav a:hover, .navbar a:hover, .router-link:hover {
   padding: 1rem 1.5rem;
   text-align: center;
 }
+
 input[type="file"] {
   border: none;
   background: none;
   margin: 0;
   padding: 0;
+  min-height: auto;
 }
+
 .photo-item img {
   border-radius: 1rem;
   max-width: 80px;
   max-height: 80px;
   margin-right: 0.5rem;
 }
+
 .remove-btn {
   background: var(--wa-danger);
   color: #fff;
@@ -138,7 +168,9 @@ input[type="file"] {
   font-size: 1.2rem;
   cursor: pointer;
   margin-left: 0.5rem;
+  min-height: auto;
 }
+
 .suggestions-dropdown {
   background: #fff;
   border: 1px solid var(--wa-gray);
@@ -150,37 +182,46 @@ input[type="file"] {
   top: 100%;
   left: 0;
 }
+
 .suggestion-item {
   padding: 0.7rem 1rem;
   cursor: pointer;
   border-radius: 1rem;
   transition: background 0.2s;
 }
+
 .suggestion-item.highlighted, .suggestion-item:hover {
   background: var(--wa-accent);
 }
+
 .form-group label {
   font-weight: 600;
   color: var(--wa-green);
   margin-bottom: 0.3rem;
+  display: block;
 }
+
 .form-group {
   margin-bottom: 1rem;
 }
+
 .form {
   width: 100%;
   max-width: 500px;
   margin: 0 auto;
 }
+
 .admin-link {
   color: var(--wa-warning) !important;
 }
+
 .divider {
   text-align: center;
   margin: 1.5rem 0;
   color: var(--wa-green);
   font-weight: 600;
 }
+
 .google-btn {
   background: #fff;
   color: #222;
@@ -193,10 +234,13 @@ input[type="file"] {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  min-height: 44px;
 }
+
 .google-btn:hover {
   background: var(--wa-accent);
 }
+
 /* Modales */
 .chat-modal-overlay, .modal-overlay {
   position: fixed;
@@ -206,7 +250,9 @@ input[type="file"] {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 1rem;
 }
+
 .modal, .chat-modal {
   background: var(--wa-card);
   border-radius: var(--wa-radius);
@@ -217,25 +263,156 @@ input[type="file"] {
   min-height: 200px;
   display: flex;
   flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
 }
+
 /* Feedback */
 .loader, .loader-more {
   text-align: center;
   color: var(--wa-green);
   margin: 1rem 0;
 }
+
 .no-messages {
   text-align: center;
   color: #888;
   margin: 2rem 0;
 }
-/* Responsive */
-@media (max-width: 768px) {
+
+/* Responsive - Mobile First */
+@media (max-width: 480px) {
+  :root {
+    --wa-radius: 1rem;
+  }
+  
   .page-header, .chat-header, .register-header, .navbar, nav, .mobile-menu-content {
     padding: 1rem 0.5rem;
     font-size: 1rem;
   }
+  
   .card, .match-card, .profile-card, .stat-card, .action-card, .form, .register-container, .dashboard, .no-matches, .chat-modal, .chat-view, .admin-card, .photo-preview, .suggestions-dropdown {
     padding: 1rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .matches-grid, .profiles-grid, .stats, .quick-actions {
+    gap: 0.5rem;
+  }
+  
+  .stat-card, .action-card {
+    padding: 0.75rem 1rem;
+  }
+  
+  button, .btn {
+    padding: 0.75rem 1.25rem;
+    font-size: 0.9rem;
+    width: 100%;
+  }
+  
+  input, textarea, select {
+    padding: 0.75rem;
+    font-size: 16px; /* Evita zoom en iOS */
+  }
+  
+  .modal, .chat-modal {
+    max-width: 95vw;
+    min-width: 280px;
+    margin: 0.5rem;
+  }
+  
+  .chat-modal-overlay, .modal-overlay {
+    padding: 0.5rem;
+  }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .page-header, .chat-header, .register-header, .navbar, nav, .mobile-menu-content {
+    padding: 1rem 1rem;
+  }
+  
+  .card, .match-card, .profile-card, .stat-card, .action-card, .form, .register-container, .dashboard, .no-matches, .chat-modal, .chat-view, .admin-card, .photo-preview, .suggestions-dropdown {
+    padding: 1.25rem;
+  }
+  
+  .matches-grid, .profiles-grid, .stats, .quick-actions {
+    gap: 0.75rem;
+  }
+  
+  .modal, .chat-modal {
+    max-width: 90vw;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 1024px) {
+  .card, .match-card, .profile-card, .stat-card, .action-card, .form, .register-container, .dashboard, .no-matches, .chat-modal, .chat-view, .admin-card, .photo-preview, .suggestions-dropdown {
+    padding: 1.5rem;
+  }
+  
+  .matches-grid, .profiles-grid, .stats, .quick-actions {
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 1025px) {
+  .card, .match-card, .profile-card, .stat-card, .action-card, .form, .register-container, .dashboard, .no-matches, .chat-modal, .chat-view, .admin-card, .photo-preview, .suggestions-dropdown {
+    padding: 1.5rem;
+  }
+  
+  .matches-grid, .profiles-grid, .stats, .quick-actions {
+    gap: 1rem;
+  }
+}
+
+/* Capacitor específico */
+@media (max-width: 480px) and (orientation: portrait) {
+  .navbar {
+    min-height: 50px;
+  }
+  
+  .main-content {
+    padding-top: 50px;
+  }
+}
+
+@media (max-width: 480px) and (orientation: landscape) {
+  .navbar {
+    min-height: 40px;
+  }
+  
+  .main-content {
+    padding-top: 40px;
+  }
+}
+
+/* Touch optimizations */
+@media (hover: none) and (pointer: coarse) {
+  button, .btn {
+    min-height: 48px; /* Mayor área de toque */
+  }
+  
+  input, textarea, select {
+    min-height: 48px;
+  }
+  
+  .router-link {
+    padding: 0.5rem;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+}
+
+/* Safe area para dispositivos con notch */
+@supports (padding: max(0px)) {
+  .navbar {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  .main-content {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
   }
 } 

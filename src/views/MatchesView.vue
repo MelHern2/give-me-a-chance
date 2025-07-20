@@ -18,9 +18,9 @@
         <p class="section-subtitle">Estos matches están esperando tu primer mensaje</p>
         
         <div class="matches-list">
-          <div v-for="match in pendingMatches" :key="match.id" class="match-list-item pending-item">
+          <div v-for="match in pendingMatches" :key="match.id" class="match-list-item pending-item" :data-match-id="match.id">
             <div class="match-avatar">
-              <img :src="match.photo || '/default-avatar.png'" :alt="match.name">
+              <img :src="match.photo || '/default-avatar.png'" :alt="match.name" @click="goToUserProfile(match.userId || '')">
               <div class="pending-badge">🔔</div>
             </div>
             <div class="match-list-info">
@@ -28,8 +28,11 @@
               <p>{{ match.city }}</p>
             </div>
             <div class="match-list-actions">
-              <button class="btn btn-primary" @click="openChat(match.id, match.userId)">
+              <button class="btn btn-primary" @click="openChat(match.id, match.userId || '')">
                 Mensaje
+              </button>
+              <button class="btn btn-danger" @click="handleUnmatch(match.id)" title="Deshacer match">
+                ❌
               </button>
             </div>
           </div>
@@ -41,9 +44,9 @@
         <h2 class="section-title">Conversaciones activas ({{ regularMatches.length }})</h2>
         
         <div class="matches-list">
-          <div v-for="match in regularMatches" :key="match.id" class="match-list-item">
+          <div v-for="match in regularMatches" :key="match.id" class="match-list-item" :data-match-id="match.id">
             <div class="match-avatar">
-              <img :src="match.photo || '/default-avatar.png'" :alt="match.name">
+              <img :src="match.photo || '/default-avatar.png'" :alt="match.name" @click="goToUserProfile(match.userId || '')">
               <div v-if="newMessageNotification[match.id]" class="notification-badge">💬</div>
             </div>
             <div class="match-list-info">
@@ -51,38 +54,49 @@
               <p>{{ match.city }}</p>
             </div>
             <div class="match-list-actions">
-              <button class="btn btn-primary" @click="openChat(match.id, match.userId)">
+              <button class="btn btn-primary" @click="openChat(match.id, match.userId || '')">
                 Mensaje
                 <span v-if="newMessageNotification[match.id]" class="msg-badge">●</span>
+              </button>
+              <button class="btn btn-danger" @click="handleUnmatch(match.id)" title="Deshacer match">
+                ❌
               </button>
             </div>
           </div>
         </div>
       </div>
     </div>
-    <ChatView v-if="showChat" :matchId="selectedMatchId" :userId="selectedUserId" :onClose="closeChat" />
+    <ChatView v-if="showChat" :matchId="selectedMatchId || undefined" :userId="selectedUserId || undefined" :onClose="closeChat" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, watch, nextTick, onUnmounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { getMatches, deleteMatch } from '@/services/matches';
 import { createReport } from '@/services/reports';
 import { sendMessage, getMessages, subscribeToMessages } from '@/services/messaging';
 import { useAuthStore } from '@/stores/auth';
 import { getProfileById } from '@/services/profiles';
 import { getPendingMatches, type PendingMatch } from '@/services/pendingMatches';
-import { useRouter } from 'vue-router';
+
 import ChatView from './ChatView.vue';
+import { removeAllLikesBetweenUsers } from '@/services/likes';
+import { removeAllDislikesBetweenUsers } from '@/services/dislikes';
+import { useNotificationsStore } from '@/stores/notifications';
+import { usePendingMatchesStore } from '@/stores/pendingMatches';
 
 const authStore = useAuthStore();
+const notificationsStore = useNotificationsStore();
+const pendingMatchesStore = usePendingMatchesStore();
+const router = useRouter();
 const isAdmin = computed(() => authStore.user?.isAdmin);
 
 // Propiedad computada para obtener los matches regulares (no pendientes)
 const regularMatches = computed(() => {
   return matches.value.filter(match => !isPendingMatch(match.id));
 });
-const router = useRouter();
+
 
 interface Match {
   id: string;
@@ -93,6 +107,8 @@ interface Match {
   createdAt: Date;
   users?: [string, string];
   userId?: string;
+  isVerified?: boolean;
+  isSuperVerified?: boolean;
 }
 
 const matches = ref<Match[]>([]);
@@ -147,7 +163,9 @@ const loadMatches = async () => {
             age: userProfile.age,
             city: userProfile.city,
             photo: userProfile.photos && userProfile.photos.length > 0 ? userProfile.photos[0] : '',
-            userId: otherUserId
+            userId: otherUserId,
+            isVerified: userProfile.isVerified,
+            isSuperVerified: userProfile.isSuperVerified,
           };
         } catch (error) {
           console.error('❌ Error obteniendo perfil de usuario:', otherUserId, error);
@@ -157,7 +175,7 @@ const loadMatches = async () => {
     );
     
     // Filtrar matches nulos y actualizar el estado
-    matches.value = matchesWithUserData.filter(match => match !== null);
+    matches.value = matchesWithUserData.filter((match): match is NonNullable<typeof match> => match !== null);
     console.log('✅ Matches cargados:', matches.value.length);
     
     // Cargar matches pendientes (sin mensajes)
@@ -177,6 +195,8 @@ const loadPendingMatches = async () => {
     const pending = await getPendingMatches(authStore.user.id);
     pendingMatches.value = pending;
     pendingMatchIds.value = pending.map(match => match.id);
+    // Actualizar el store de matches pendientes
+    await pendingMatchesStore.loadPendingMatches(authStore.user.id);
     console.log('✅ Matches pendientes cargados:', pendingMatches.value.length);
   } catch (error) {
     console.error('❌ Error cargando matches pendientes:', error);
@@ -189,9 +209,104 @@ const isPendingMatch = (matchId: string): boolean => {
 };
 
 const handleUnmatch = async (matchId: string) => {
-  if (confirm('¿Estás seguro de que quieres deshacer este match?')) {
+  // Validar que matchId no sea undefined
+  if (!matchId) {
+    console.error('❌ Error: matchId es undefined en handleUnmatch');
+    notificationsStore.error('Error', 'No se pudo deshacer el match. Inténtalo de nuevo.');
+    return;
+  }
+  
+  // Determinar si es un match pendiente o regular
+  const isPending = isPendingMatch(matchId);
+  const matchType = isPending ? 'pendiente' : 'regular';
+  
+  // Confirmar la acción usando notificaciones internas
+  notificationsStore.confirm(
+    'Confirmar acción',
+    `¿Estás seguro de que quieres deshacer este match ${matchType}?\n\nEsta acción no se puede deshacer y reiniciará el estado de interacción con el perfil.`,
+    async () => {
+      // Continuar con la eliminación del match
+      await performUnmatch(matchId, isPending, matchType);
+    }
+  );
+  
+  return;
+};
+
+const performUnmatch = async (matchId: string, isPending: boolean, matchType: string) => {
+  
+  try {
+    console.log(`🗑️ Deshaciendo match ${matchType}:`, matchId);
+    
+    // Mostrar indicador de carga
+    const matchElement = document.querySelector(`[data-match-id="${matchId}"]`) as HTMLElement;
+    if (matchElement) {
+      matchElement.style.opacity = '0.5';
+    }
+    
+    // Obtener el ID del otro usuario en el match
+    const match = isPending 
+      ? pendingMatches.value.find(m => m.id === matchId)
+      : matches.value.find(m => m.id === matchId);
+    
+    if (!match || !match.userId || !authStore.user) {
+      console.error('❌ Error: No se pudo obtener información del match');
+      notificationsStore.error('Error', 'No se pudo obtener información del match.');
+      return;
+    }
+    
+    const otherUserId = match.userId;
+    const currentUserId = authStore.user.id;
+    
+    console.log('👥 Eliminando interacciones entre usuarios:', currentUserId, 'y', otherUserId);
+    
+    // Eliminar el match de Firestore
     await deleteMatch(matchId);
-    matches.value = matches.value.filter(m => m.id !== matchId);
+    
+    // Eliminar likes y dislikes entre los usuarios para reiniciar completamente las interacciones
+    await removeAllLikesBetweenUsers(currentUserId, otherUserId);
+    await removeAllDislikesBetweenUsers(currentUserId, otherUserId);
+    
+    // Eliminar de la lista local según el tipo
+    if (isPending) {
+      pendingMatchIds.value = pendingMatchIds.value.filter(id => id !== matchId);
+      pendingMatches.value = pendingMatches.value.filter(match => match.id !== matchId);
+      // Actualizar el store de matches pendientes
+      pendingMatchesStore.removePendingMatch(matchId);
+    } else {
+      matches.value = matches.value.filter(m => m.id !== matchId);
+    }
+    
+    // Forzar actualización de la vista
+    await nextTick();
+
+    // Recargar la lista de matches desde Firestore para asegurar sincronización
+    await loadMatches();
+
+    console.log(`✅ Match ${matchType} eliminado correctamente`);
+    console.log('🔄 Estado de interacción reiniciado');
+    console.log(`📊 Matches restantes: ${matches.value.length}`);
+    
+    // Mostrar mensaje de éxito
+    notificationsStore.success('Éxito', `Match ${matchType} eliminado correctamente.\n\nEl estado de interacción con este perfil se ha reiniciado.`);
+    
+    // Emitir evento para recargar perfiles (para que el perfil vuelva a aparecer en la lista)
+    window.dispatchEvent(new CustomEvent('match-removed', { 
+      detail: { 
+        removedUserId: otherUserId,
+        currentUserId: currentUserId 
+      } 
+    }));
+    
+  } catch (error) {
+    console.error(`❌ Error eliminando match ${matchType}:`, error);
+    notificationsStore.error('Error', 'Error al eliminar el match. Inténtalo de nuevo.');
+    
+    // Restaurar opacidad si falló
+    const matchElement = document.querySelector(`[data-match-id="${matchId}"]`) as HTMLElement;
+    if (matchElement) {
+      matchElement.style.opacity = '1';
+    }
   }
 };
 
@@ -203,10 +318,18 @@ const handleReport = async (reportedUserId: string) => {
     reportedUserId,
     reason,
   });
-  alert('Usuario reportado. ¡Gracias por ayudarnos a mantener la comunidad segura!');
+  notificationsStore.success('Reporte enviado', 'Usuario reportado. ¡Gracias por ayudarnos a mantener la comunidad segura!');
 };
 
 const openChat = async (matchId: string, userId: string) => {
+  // Validar que matchId y userId no sean undefined o null
+  if (!matchId || !userId) {
+    console.error('❌ Error: matchId o userId son undefined/null:', { matchId, userId });
+    notificationsStore.error('Error', 'No se pudo abrir el chat. Inténtalo de nuevo.');
+    return;
+  }
+  
+  console.log('💬 Abriendo chat:', { matchId, userId });
   selectedMatchId.value = matchId;
   selectedUserId.value = userId;
   showChat.value = true;
@@ -230,16 +353,12 @@ const closeChat = () => {
   selectedUserId.value = null;
 };
 
-const handleSendMessage = async () => {
-  if (!chatInput.value.trim() || !chatMatchId.value || !authStore.user) return;
-  await sendMessage(chatMatchId.value, authStore.user.id, chatInput.value);
-  chatMessages.value = await getMessages(chatMatchId.value);
-  chatInput.value = '';
-};
 
-const goToChat = (matchId: string, userId: string) => {
-  // Navegar a la vista de chat pasando el userId del otro usuario
-  router.push({ name: 'chat', params: { matchId }, query: { userId } });
+
+
+
+const goToUserProfile = (userId: string) => {
+  router.push(`/user/${userId}`);
 };
 
 // Suscribirse a mensajes de todos los matches para notificaciones
@@ -259,6 +378,27 @@ onMounted(() => {
   if (authStore.user) {
     loadMatches();
   }
+  
+  // Listener para cuando se envía el primer mensaje y un match pendiente se convierte en activo
+  const handleFirstMessageSent = (event: Event) => {
+    const customEvent = event as CustomEvent;
+    const { matchId } = customEvent.detail;
+    console.log('📨 Primer mensaje enviado para match:', matchId);
+    
+    // Remover el match de la lista de pendientes
+    pendingMatchIds.value = pendingMatchIds.value.filter(id => id !== matchId);
+    pendingMatches.value = pendingMatches.value.filter(match => match.id !== matchId);
+    
+    // Recargar matches para asegurar sincronización
+    loadMatches();
+  };
+  
+  window.addEventListener('first-message-sent', handleFirstMessageSent);
+  
+  // Cleanup al desmontar
+  onUnmounted(() => {
+    window.removeEventListener('first-message-sent', handleFirstMessageSent);
+  });
 });
 
 // Watcher para cuando el usuario se autentica
@@ -267,6 +407,11 @@ watch(() => authStore.user, (newUser) => {
     loadMatches();
   }
 }, { immediate: true });
+
+// Watcher para recargar matches cuando cambie la lista
+watch(matches, (newMatches) => {
+  console.log('🔄 Lista de matches actualizada:', newMatches.length);
+}, { deep: true });
 </script>
 
 <style scoped>
@@ -372,6 +517,26 @@ watch(() => authStore.user, (newUser) => {
 .match-list-actions {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.btn-danger {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+  background: #c82333;
+}
+
+.btn-danger:active {
+  background: #bd2130;
 }
 
 .notification-badge {
@@ -418,5 +583,44 @@ watch(() => authStore.user, (newUser) => {
   0% { transform: scale(1); }
   50% { transform: scale(1.1); }
   100% { transform: scale(1); }
+}
+
+/* Estilos para el estado de verificación */
+.verification-status {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.verification-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.super-verified {
+  background-color: #e6ffea;
+  color: #38a169;
+  border: 1px solid #a8e6b4;
+}
+
+.verified {
+  background-color: #e6ffea;
+  color: #38a169;
+  border: 1px solid #a8e6b4;
+}
+
+.badge-icon {
+  font-size: 1rem;
+}
+
+.badge-text {
+  font-weight: 600;
 }
 </style> 

@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import NavBar from '@/components/NavBar.vue';
 import { onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { pushNotificationService } from '@/services/pushNotifications';
+import NavBar from '@/components/NavBar.vue';
+import NotificationToast from '@/components/NotificationToast.vue';
+import NotificationSystem from '@/components/NotificationSystem.vue';
 
 const authStore = useAuthStore();
 
@@ -28,6 +30,8 @@ onMounted(async () => {
     <main class="main-content">
       <router-view />
     </main>
+    <NotificationToast />
+    <NotificationSystem />
   </div>
 </template>
 
@@ -42,6 +46,8 @@ onMounted(async () => {
 html {
   font-size: 16px;
   scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
 }
 
 body {
@@ -52,6 +58,14 @@ body {
   color: #333;
   background-color: #f8f9fa;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 #app {
@@ -62,6 +76,7 @@ body {
   padding: 0;
   min-height: 100vh;
   width: 100%;
+  overflow-x: hidden;
 }
 
 .main-content {
@@ -70,6 +85,7 @@ body {
   width: 100%;
   max-width: none;
   margin: 0;
+  overflow-x: hidden;
 }
 
 /* Responsive para el contenido principal */
@@ -77,6 +93,13 @@ body {
   .main-content {
     padding-top: 60px; /* Altura de la navbar en móvil */
     min-height: calc(100vh - 60px);
+  }
+}
+
+@media (max-width: 480px) {
+  .main-content {
+    padding-top: 50px; /* Altura de la navbar en móvil pequeño */
+    min-height: calc(100vh - 50px);
   }
 }
 
@@ -145,6 +168,12 @@ body {
   transition: var(--transition);
   min-height: 44px; /* Para accesibilidad en móvil */
   white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
 .btn-primary {
@@ -176,6 +205,7 @@ body {
     padding: 0.875rem 1.25rem;
     font-size: 0.9rem;
     width: 100%;
+    min-height: 48px; /* Mayor área de toque */
   }
 }
 
@@ -203,6 +233,9 @@ body {
   transition: var(--transition);
   background: white;
   min-height: 44px; /* Para accesibilidad en móvil */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 .form-group input:focus,
@@ -224,6 +257,7 @@ body {
   .form-group textarea {
     padding: 1rem;
     font-size: 16px; /* Evita zoom en iOS */
+    min-height: 48px; /* Mayor área de toque */
   }
 }
 
@@ -315,5 +349,35 @@ body {
   padding: 1rem;
   border-radius: 6px;
   margin-bottom: 1rem;
+}
+
+/* Capacitor específico */
+@media (max-width: 480px) and (orientation: landscape) {
+  .main-content {
+    padding-top: 40px;
+    min-height: calc(100vh - 40px);
+  }
+}
+
+/* Touch optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .btn {
+    min-height: 48px;
+  }
+  
+  .form-group input,
+  .form-group select,
+  .form-group textarea {
+    min-height: 48px;
+  }
+}
+
+/* Safe area para dispositivos con notch */
+@supports (padding: max(0px)) {
+  .main-content {
+    padding-left: max(0px, env(safe-area-inset-left));
+    padding-right: max(0px, env(safe-area-inset-right));
+    padding-bottom: max(0px, env(safe-area-inset-bottom));
+  }
 }
 </style>

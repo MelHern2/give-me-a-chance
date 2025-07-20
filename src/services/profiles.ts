@@ -5,11 +5,13 @@ import {
   filterUsersByDistance, 
   sortUsersByDistance, 
   getUserLocation,
+  calculateDistance,
   type Location 
 } from '@/services/geolocation';
 
 export const getProfiles = async (currentUserId: string): Promise<UserProfile[]> => {
   try {
+    console.log('🔄 Obteniendo perfiles para usuario:', currentUserId);
     const usersRef = collection(db, 'users');
     
     // Obtener todos los usuarios y filtrar en el cliente para evitar problemas de índice
@@ -19,16 +21,19 @@ export const getProfiles = async (currentUserId: string): Promise<UserProfile[]>
       limit(100)
     );
     
+    console.log('📋 Ejecutando query en Firestore...');
     const querySnapshot = await getDocs(q);
+    console.log(`📊 Query completada. Documentos encontrados: ${querySnapshot.size}`);
     
     const profiles: UserProfile[] = [];
     
     querySnapshot.forEach((doc) => {
       const userData = doc.data();
+      console.log('👤 Procesando usuario:', userData.name, 'ID:', userData.id);
       
       // Filtrar el usuario actual en el cliente
       if (userData.id !== currentUserId) {
-        profiles.push({
+        const profile: UserProfile = {
           id: userData.id,
           name: userData.name,
           age: userData.age,
@@ -45,7 +50,12 @@ export const getProfiles = async (currentUserId: string): Promise<UserProfile[]>
           description: userData.description,
           photos: userData.photos || [],
           location: userData.location,
-        });
+        };
+        
+        console.log('✅ Perfil agregado:', profile.name);
+        profiles.push(profile);
+      } else {
+        console.log('❌ Usuario actual filtrado:', userData.name);
       }
     });
     
@@ -54,6 +64,7 @@ export const getProfiles = async (currentUserId: string): Promise<UserProfile[]>
       index === self.findIndex(p => p.id === profile.id)
     );
     
+    console.log(`🎉 Perfiles únicos obtenidos: ${uniqueProfiles.length}`);
     return uniqueProfiles;
   } catch (error) {
     console.error('❌ Error getting profiles:', error);
@@ -164,7 +175,7 @@ export const getProfilesByFilters = async (
       console.log(`📍 Perfiles filtrados por distancia: ${beforeCount} -> ${filteredProfiles.length}`);
       
       // Ordenar por distancia
-      filteredProfiles.sort((a, b) => a.distance - b.distance);
+      filteredProfiles.sort((a, b) => (a.distance || 0) - (b.distance || 0));
     } else {
       console.log('⚠️ No se pudo aplicar filtro de distancia:', { maxDistance: filters.maxDistance, hasLocation: !!userLocation });
     }

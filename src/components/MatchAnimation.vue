@@ -19,7 +19,7 @@
       </div>
       
       <div class="match-animation-actions">
-        <button class="btn btn-primary" @click="sendMessage">
+        <button class="btn btn-primary" @click="sendMessage" :disabled="!props.matchId">
           Enviar mensaje
         </button>
         <button class="btn btn-secondary" @click="close">

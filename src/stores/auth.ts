@@ -2,10 +2,12 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import type { User, AuthState } from '@/types';
 import { setupUserNotifications } from '@/services/notifications';
+import { useRouter } from 'vue-router';
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null);
   const loading = ref(false);
+  const router = useRouter();
 
   const isAuthenticated = computed(() => !!user.value);
   const hasAcceptedTerms = computed(() => {
@@ -26,17 +28,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
   };
 
-  const setUser = async (newUser: User | null) => {
-    user.value = newUser;
+  const setUser = (newUser: User) => {
+    console.log('🔄 Actualizando usuario en store:', {
+      id: newUser.id,
+      name: newUser.name,
+      isVerified: newUser.isVerified,
+      isSuperVerified: newUser.isSuperVerified,
+      verifiedAt: newUser.verifiedAt
+    });
     
-    // Configurar notificaciones cuando el usuario se autentique
-    if (newUser && newUser.id) {
-      try {
-        await setupUserNotifications(newUser.id);
-      } catch (error) {
-        console.error('Error setting up notifications:', error);
-      }
-    }
+    user.value = newUser;
+    localStorage.setItem('user', JSON.stringify(newUser));
+    
+    console.log('✅ Usuario actualizado en store y localStorage');
   };
 
   const setLoading = (isLoading: boolean) => {
@@ -46,6 +50,7 @@ export const useAuthStore = defineStore('auth', () => {
   const logout = () => {
     user.value = null;
     localStorage.removeItem('user');
+    router.push('/login');
   };
 
   const saveUserToStorage = (userData: User) => {

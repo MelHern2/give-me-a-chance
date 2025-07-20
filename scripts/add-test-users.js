@@ -1,6 +1,21 @@
 // Script para agregar usuarios de prueba en España
-import { db } from '../src/config/firebase.js';
-import { collection, addDoc } from 'firebase/firestore';
+import { initializeApp } from 'firebase/app';
+import { getFirestore, collection, addDoc } from 'firebase/firestore';
+
+// Configuración de Firebase
+const firebaseConfig = {
+  apiKey: "AIzaSyD2T2kGXwpaz84mvKpxPZiVgnG8lNflBo0",
+  authDomain: "dating-app-ca189.firebaseapp.com",
+  projectId: "dating-app-ca189",
+  storageBucket: "dating-app-ca189.firebasestorage.app",
+  messagingSenderId: "814656156894",
+  appId: "1:814656156894:web:ff33b8c01aef2848827e4f",
+  measurementId: "G-W1CBF2KY97"
+};
+
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 const testUsers = [
   {
@@ -17,7 +32,7 @@ const testUsers = [
     hasChildren: false,
     relationshipType: 'seria',
     description: 'Me encanta viajar, leer y conocer gente nueva. Busco una relación seria y estable.',
-    photos: ['https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400'],
+    photos: ['https://picsum.photos/400/600?random=1'],
     createdAt: new Date('2024-01-15'),
     email: 'ana.garcia@test.com'
   },
@@ -35,7 +50,7 @@ const testUsers = [
     hasChildren: false,
     relationshipType: 'seria',
     description: 'Ingeniero de software, amante del fútbol y la música. Busco alguien con quien compartir la vida.',
-    photos: ['https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'],
+    photos: ['https://picsum.photos/400/600?random=2'],
     createdAt: new Date('2024-01-20'),
     email: 'carlos.rodriguez@test.com'
   },
@@ -53,7 +68,7 @@ const testUsers = [
     hasChildren: false,
     relationshipType: 'seria',
     description: 'Profesora de inglés, me gusta el arte, la cocina y los viajes. Busco una relación seria.',
-    photos: ['https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400'],
+    photos: ['https://picsum.photos/400/600?random=3'],
     createdAt: new Date('2024-02-01'),
     email: 'maria.lopez@test.com'
   },
@@ -71,7 +86,7 @@ const testUsers = [
     hasChildren: false,
     relationshipType: 'casual',
     description: 'Músico y DJ, me encanta la vida nocturna y conocer gente interesante.',
-    photos: ['https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400'],
+    photos: ['https://picsum.photos/400/600?random=4'],
     createdAt: new Date('2024-02-10'),
     email: 'david.martin@test.com'
   },
@@ -89,7 +104,7 @@ const testUsers = [
     hasChildren: false,
     relationshipType: 'seria',
     description: 'Arquitecta, amante del diseño y la naturaleza. Busco alguien con valores similares.',
-    photos: ['https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400'],
+    photos: ['https://picsum.photos/400/600?random=5'],
     createdAt: new Date('2024-02-15'),
     email: 'laura.fernandez@test.com'
   },
@@ -107,7 +122,7 @@ const testUsers = [
     hasChildren: true,
     relationshipType: 'seria',
     description: 'Médico, padre de una niña de 5 años. Busco una relación seria y estable.',
-    photos: ['https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400'],
+    photos: ['https://picsum.photos/400/600?random=6'],
     createdAt: new Date('2024-01-25'),
     email: 'javier.moreno@test.com'
   },
@@ -125,7 +140,7 @@ const testUsers = [
     hasChildren: false,
     relationshipType: 'seria',
     description: 'Estudiante de medicina, me gusta el deporte y la lectura. Busco una relación seria.',
-    photos: ['https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400'],
+    photos: ['https://picsum.photos/400/600?random=7'],
     createdAt: new Date('2024-03-01'),
     email: 'sofia.torres@test.com'
   },
@@ -143,7 +158,7 @@ const testUsers = [
     hasChildren: false,
     relationshipType: 'casual',
     description: 'Chef, me apasiona la cocina y los viajes. Busco conocer gente interesante.',
-    photos: ['https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400'],
+    photos: ['https://picsum.photos/400/600?random=8'],
     createdAt: new Date('2024-02-20'),
     email: 'miguel.sanchez@test.com'
   },
@@ -161,7 +176,7 @@ const testUsers = [
     hasChildren: false,
     relationshipType: 'seria',
     description: 'Profesora de historia, me encanta la cultura árabe y el flamenco. Busco una relación seria.',
-    photos: ['https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400'],
+    photos: ['https://picsum.photos/400/600?random=9'],
     createdAt: new Date('2024-01-30'),
     email: 'carmen.ruiz@test.com'
   },
@@ -179,7 +194,7 @@ const testUsers = [
     hasChildren: false,
     relationshipType: 'seria',
     description: 'Abogado, amante del mar y los deportes acuáticos. Busco una relación seria y estable.',
-    photos: ['https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400'],
+    photos: ['https://picsum.photos/400/600?random=10'],
     createdAt: new Date('2024-02-05'),
     email: 'roberto.jimenez@test.com'
   }

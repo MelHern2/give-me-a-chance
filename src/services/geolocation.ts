@@ -19,12 +19,6 @@ export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2
     return 9999; // Valor grande para que no pase el filtro
   }
   
-  // Para pruebas, generar distancias aleatorias entre 1 y 100 km
-  // Esto es solo para simular distancias variadas
-  // En producción, usar el código comentado abajo
-  return Math.floor(Math.random() * 100) + 1;
-  
-  /*
   const R = 6371; // Radio de la Tierra en kilómetros
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
@@ -35,7 +29,6 @@ export const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   const distance = R * c; // Distancia en kilómetros
   return Math.round(distance * 10) / 10; // Redondear a 1 decimal
-  */
 };
 
 // Obtener ubicación actual del usuario

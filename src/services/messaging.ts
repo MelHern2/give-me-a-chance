@@ -17,6 +17,7 @@ import {
   getDoc,
   setDoc
 } from 'firebase/firestore';
+import { usePendingMatchesStore } from '@/stores/pendingMatches';
 
 export interface Message {
   id: string;
@@ -37,7 +38,15 @@ export interface Chat {
 
 // Enviar un mensaje
 export const sendMessage = async (matchId: string, senderId: string, content: string): Promise<void> => {
+  // Validar parámetros antes de enviar
+  if (!matchId || !senderId || !content) {
+    console.error('❌ Error: Parámetros inválidos para sendMessage:', { matchId, senderId, content });
+    throw new Error('Parámetros inválidos para enviar mensaje');
+  }
+  
   try {
+    console.log('📤 Enviando mensaje a Firestore:', { matchId, senderId, content: content.substring(0, 50) + '...' });
+    
     const messageData = {
       matchId,
       senderId,
@@ -48,12 +57,39 @@ export const sendMessage = async (matchId: string, senderId: string, content: st
 
     await addDoc(collection(db, 'messages'), messageData);
 
+    // Verificar si es el primer mensaje del match (para actualizar matches pendientes)
+    const matchRef = doc(db, 'matches', matchId);
+    const matchSnap = await getDoc(matchRef);
+    const isFirstMessage = matchSnap.exists() && !matchSnap.data().hasMessages;
+
+    // Actualizar el match con hasMessages = true si es el primer mensaje
+    if (isFirstMessage) {
+      await updateDoc(matchRef, {
+        hasMessages: true,
+        lastMessage: content,
+        lastMessageAt: serverTimestamp()
+      });
+      console.log('✅ Primer mensaje enviado, match actualizado como activo');
+      
+      // Actualizar el store de matches pendientes
+      try {
+        const pendingMatchesStore = usePendingMatchesStore();
+        pendingMatchesStore.markMatchAsActive(matchId);
+      } catch (error) {
+        console.error('Error actualizando store de matches pendientes:', error);
+      }
+      
+      // Emitir evento para que otros componentes sepan que se envió el primer mensaje
+      window.dispatchEvent(new CustomEvent('first-message-sent', { 
+        detail: { matchId } 
+      }));
+    }
+
     // Actualizar el chat con el último mensaje
     const chatRef = doc(db, 'chats', matchId);
     const chatSnap = await getDoc(chatRef);
     if (!chatSnap.exists()) {
       // Obtener participantes del match (buscamos en matches)
-      const matchSnap = await getDoc(doc(db, 'matches', matchId));
       let participants = [];
       if (matchSnap.exists()) {
         const matchData = matchSnap.data();
@@ -84,7 +120,14 @@ export const sendMessage = async (matchId: string, senderId: string, content: st
 
 // Obtener mensajes de un match
 export const getMessages = async (matchId: string): Promise<Message[]> => {
+  // Validar matchId
+  if (!matchId) {
+    console.error('❌ Error: matchId es undefined/null en getMessages');
+    return [];
+  }
+  
   try {
+    console.log('📥 Obteniendo mensajes para matchId:', matchId);
     const messagesQuery = query(
       collection(db, 'messages'),
       where('matchId', '==', matchId),
@@ -92,19 +135,30 @@ export const getMessages = async (matchId: string): Promise<Message[]> => {
     );
 
     const snapshot = await getDocs(messagesQuery);
-    return snapshot.docs.map(doc => ({
+    const messages = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as Message[];
+    
+    console.log(`✅ Obtenidos ${messages.length} mensajes para matchId: ${matchId}`);
+    return messages;
 
   } catch (error) {
-    console.error('Error getting messages:', error);
+    console.error('❌ Error getting messages:', error);
     return [];
   }
 };
 
 // Suscribirse a mensajes en tiempo real
 export const subscribeToMessages = (matchId: string, callback: (messages: Message[]) => void) => {
+  // Validar matchId
+  if (!matchId) {
+    console.error('❌ Error: matchId es undefined/null en subscribeToMessages');
+    return () => {}; // Retornar función vacía para evitar errores
+  }
+  
+  console.log('👂 Suscribiéndose a mensajes para matchId:', matchId);
+  
   const messagesQuery = query(
     collection(db, 'messages'),
     where('matchId', '==', matchId),
@@ -117,7 +171,10 @@ export const subscribeToMessages = (matchId: string, callback: (messages: Messag
       ...doc.data()
     })) as Message[];
     
+    console.log(`📨 Mensajes actualizados para matchId ${matchId}: ${messages.length} mensajes`);
     callback(messages);
+  }, (error) => {
+    console.error('❌ Error en suscripción de mensajes:', error);
   });
 };
 

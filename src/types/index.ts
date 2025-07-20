@@ -4,26 +4,21 @@ export interface User {
   name: string;
   age: number;
   gender: string;
-  country: string;
-  region: string;
   city: string;
-  religion: string;
-  isMonogamous: boolean;
-  sexualOrientation: string;
-  politicalOrientation: string;
-  hasChildren: boolean;
-  relationshipType: string;
-  description: string;
   photos: string[];
-  location: {
+  bio?: string;
+  interests: string[];
+  location?: {
     latitude: number;
     longitude: number;
   };
-  isAdmin: boolean;
-  isVerified?: boolean;
+  isVerified: boolean;
+  isSuperVerified: boolean; // Nuevo campo para super verificación
   verifiedAt?: Date;
+  superVerifiedAt?: Date; // Nuevo campo para fecha de super verificación
   verificationPhoto?: string;
-  fcmToken?: string; // Token para notificaciones push
+  superVerificationPhoto?: string; // Foto de la verificación de vida
+  isAdmin: boolean; // Campo para administradores
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +44,8 @@ export interface UserProfile {
     longitude: number;
   };
   distance?: number;
+  isVerified?: boolean;
+  isSuperVerified?: boolean;
 }
 
 export interface AuthState {
@@ -63,6 +60,7 @@ export interface FilterOptions {
   gender: string[];
   sexualOrientation: string[];
   relationshipType: string[];
+  interactionStatus: string[]; // Nuevo campo para estado de interacción
   hasChildren?: boolean;
   isMonogamous?: boolean;
 }

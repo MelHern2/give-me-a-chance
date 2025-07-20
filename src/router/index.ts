@@ -63,6 +63,12 @@ const router = createRouter({
       meta: { requiresAdmin: true }
     },
     {
+      path: '/admin/users',
+      name: 'admin-users',
+      component: () => import('../views/AdminUsersView.vue'),
+      meta: { requiresAdmin: true }
+    },
+    {
       path: '/verification',
       name: 'verification',
       component: VerificationView,
@@ -91,10 +97,11 @@ router.beforeEach((to, from, next) => {
   }
   
   // Verificar si el usuario necesita verificación
-  const requiresVerification = ['profiles', 'matches', 'chat'].includes(to.name as string);
-  if (authStore.isAuthenticated && requiresVerification && !authStore.user?.isVerified && to.name !== 'verification') {
-    return next({ name: 'verification' });
-  }
+  // Eliminar o comentar este bloque para permitir acceso aunque no esté verificado:
+  // const requiresVerification = ['profiles', 'matches', 'chat'].includes(to.name as string);
+  // if (authStore.isAuthenticated && requiresVerification && !authStore.user?.isVerified && to.name !== 'verification') {
+  //   return next({ name: 'verification' });
+  // }
   
   // Verificar rutas de admin
   if (to.meta.requiresAdmin) {

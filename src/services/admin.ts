@@ -11,7 +11,8 @@ import {
   writeBatch,
   addDoc,
   orderBy,
-  limit
+  limit,
+  startAfter
 } from 'firebase/firestore';
 
 // Banear un usuario
@@ -261,3 +262,197 @@ export const createAdminLog = async (action: string, details: any, adminId: stri
     // No lanzar error para no interrumpir la operación principal
   }
 }; 
+
+// Buscar usuarios con filtros
+export const searchUsers = async (filters: any, page: number = 1, itemsPerPage: number = 20) => {
+  try {
+    // Obtener todos los usuarios primero (para simplificar)
+    const usersRef = collection(db, 'users');
+    const q = query(usersRef, orderBy('createdAt', 'desc'), limit(100));
+    const querySnapshot = await getDocs(q);
+    
+    let users: any[] = [];
+
+    querySnapshot.forEach((doc) => {
+      const userData = doc.data();
+      let includeUser = true;
+
+      // Aplicar filtros en el cliente
+      if (filters.name && !userData.name?.toLowerCase().includes(filters.name.toLowerCase())) {
+        includeUser = false;
+      }
+
+      if (filters.email && userData.email !== filters.email) {
+        includeUser = false;
+      }
+
+      if (filters.country && userData.country !== filters.country) {
+        includeUser = false;
+      }
+
+      if (filters.region && userData.region !== filters.region) {
+        includeUser = false;
+      }
+
+      if (filters.city && !userData.city?.toLowerCase().includes(filters.city.toLowerCase())) {
+        includeUser = false;
+      }
+
+      if (filters.gender && userData.gender !== filters.gender) {
+        includeUser = false;
+      }
+
+      if (filters.verification) {
+        switch (filters.verification) {
+          case 'verified':
+            if (!userData.isVerified) includeUser = false;
+            break;
+          case 'super-verified':
+            if (!userData.isSuperVerified) includeUser = false;
+            break;
+          case 'unverified':
+            if (userData.isVerified || userData.isSuperVerified) includeUser = false;
+            break;
+        }
+      }
+
+      if (filters.ageMin && userData.age < parseInt(filters.ageMin)) {
+        includeUser = false;
+      }
+
+      if (filters.ageMax && userData.age > parseInt(filters.ageMax)) {
+        includeUser = false;
+      }
+
+      if (includeUser) {
+        users.push({
+          id: doc.id,
+          ...userData
+        });
+      }
+    });
+
+    // Aplicar paginación
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedUsers = users.slice(startIndex, endIndex);
+
+    return {
+      users: paginatedUsers,
+      total: users.length,
+      hasMore: endIndex < users.length
+    };
+
+  } catch (error) {
+    console.error('Error buscando usuarios:', error);
+    throw error;
+  }
+};
+
+// Quitar verificación a un usuario
+export const removeUserVerification = async (userId: string) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      isVerified: false,
+      isSuperVerified: false,
+      verifiedAt: null,
+      updatedAt: new Date()
+    });
+    
+    // Importar el store de auth para actualizar el usuario actual si es el mismo
+    const { useAuthStore } = await import('@/stores/auth');
+    const authStore = useAuthStore();
+    
+    // Si el usuario actual es el mismo que se está desverificando, actualizar el store
+    if (authStore.user && authStore.user.id === userId) {
+      const updatedUser = {
+        ...authStore.user,
+        isVerified: false,
+        isSuperVerified: false,
+        verifiedAt: undefined
+      };
+      authStore.setUser(updatedUser);
+      console.log('✅ Usuario actual actualizado en store después de quitar verificación');
+    }
+    
+    return { success: true, message: 'Verificación removida exitosamente' };
+  } catch (error) {
+    console.error('Error removiendo verificación:', error);
+    throw error;
+  }
+};
+
+// Agregar verificación a un usuario
+export const addUserVerification = async (userId: string, isSuperVerified: boolean = false) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const verificationDate = new Date();
+    
+    await updateDoc(userRef, {
+      isVerified: true,
+      isSuperVerified: isSuperVerified,
+      verifiedAt: verificationDate,
+      updatedAt: new Date()
+    });
+    
+    // Importar el store de auth para actualizar el usuario actual si es el mismo
+    const { useAuthStore } = await import('@/stores/auth');
+    const authStore = useAuthStore();
+    
+    // Si el usuario actual es el mismo que se está verificando, actualizar el store
+    if (authStore.user && authStore.user.id === userId) {
+      const updatedUser = {
+        ...authStore.user,
+        isVerified: true,
+        isSuperVerified: isSuperVerified,
+        verifiedAt: verificationDate
+      };
+      authStore.setUser(updatedUser);
+      console.log('✅ Usuario actual actualizado en store después de agregar verificación');
+    }
+    
+    return { success: true, message: 'Usuario verificado exitosamente' };
+  } catch (error) {
+    console.error('Error verificando usuario:', error);
+    throw error;
+  }
+};
+
+// Recargar datos del usuario desde Firestore
+export const reloadUserData = async (userId: string) => {
+  try {
+    const userRef = doc(db, 'users', userId);
+    const userDoc = await getDoc(userRef);
+    
+    if (!userDoc.exists()) {
+      throw new Error('Usuario no encontrado');
+    }
+    
+    const userData = userDoc.data();
+    
+    // Importar el store de auth para actualizar el usuario actual
+    const { useAuthStore } = await import('@/stores/auth');
+    const authStore = useAuthStore();
+    
+    // Si es el usuario actual, actualizar el store
+    if (authStore.user && authStore.user.id === userId) {
+      const updatedUser = {
+        id: userDoc.id,
+        ...userData
+      } as any; // Type assertion para evitar problemas de tipos
+      authStore.setUser(updatedUser);
+      console.log('✅ Datos del usuario actualizados desde Firestore');
+    }
+    
+    return {
+      id: userDoc.id,
+      ...userData
+    };
+  } catch (error) {
+    console.error('Error recargando datos del usuario:', error);
+    throw error;
+  }
+};
+
+ 

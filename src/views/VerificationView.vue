@@ -22,7 +22,49 @@
       </div>
       
       <div v-else class="verification-content">
+        <!-- Selección de tipo de verificación -->
+        <div v-if="!selectedVerificationType" class="verification-options">
+          <h2>Elige tu método de verificación</h2>
+          <p>Selecciona la opción que mejor se adapte a tu dispositivo:</p>
+          
+          <div class="verification-cards">
+            <!-- Opción 1: Verificación con foto (PC) -->
+            <div class="verification-card" @click="selectVerificationType('photo')">
+              <div class="card-icon">📷</div>
+              <h3>Verificación con Foto</h3>
+              <p>Ideal para PC y dispositivos de escritorio</p>
+              <ul>
+                <li>Foto de perfil clara</li>
+                <li>Símbolo V con los dedos</li>
+                <li>Proceso rápido y sencillo</li>
+              </ul>
+              <div class="card-badge">Recomendado para PC</div>
+            </div>
+            
+            <!-- Opción 2: Super verificación (Móvil) -->
+            <div class="verification-card" @click="selectVerificationType('liveness')">
+              <div class="card-icon">🔐</div>
+              <h3>Super Verificación</h3>
+              <p>Verificación avanzada con detección de vida</p>
+              <ul>
+                <li>Detección de rostro en tiempo real</li>
+                <li>Verificación de acciones (parpadear, sonreír)</li>
+                <li>Máxima seguridad</li>
+              </ul>
+              <div class="card-badge">Recomendado para móvil</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Verificación con foto -->
+        <div v-else-if="selectedVerificationType === 'photo'" class="photo-verification">
+          <PhotoVerification @complete="handleVerificationComplete" />
+        </div>
+        
+        <!-- Verificación con liveness -->
+        <div v-else-if="selectedVerificationType === 'liveness'" class="liveness-verification">
         <FaceVerification @complete="handleVerificationComplete" />
+        </div>
       </div>
     </div>
   </div>
@@ -33,6 +75,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import FaceVerification from '@/components/FaceVerification.vue';
+import PhotoVerification from '@/components/PhotoVerification.vue';
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -40,6 +83,7 @@ const authStore = useAuthStore();
 const loading = ref(true);
 const isVerified = ref(false);
 const verifiedAt = ref<Date | null>(null);
+const selectedVerificationType = ref<'photo' | 'liveness' | null>(null);
 
 onMounted(async () => {
   // Verificar si el usuario ya está verificado
@@ -51,8 +95,15 @@ onMounted(async () => {
   loading.value = false;
 });
 
+const selectVerificationType = (type: 'photo' | 'liveness') => {
+  selectedVerificationType.value = type;
+};
+
 const handleVerificationComplete = (success: boolean) => {
+  console.log('🔄 Verificación completada con resultado:', success);
+  
   if (success) {
+    // Verificación exitosa
     isVerified.value = true;
     verifiedAt.value = new Date();
     
@@ -60,6 +111,10 @@ const handleVerificationComplete = (success: boolean) => {
     setTimeout(() => {
       router.push('/');
     }, 3000);
+  } else {
+    // Verificación cancelada, fallida o saltada
+    // Redirigir de vuelta al perfil
+    router.push('/profile');
   }
 };
 
@@ -152,6 +207,103 @@ const formatDate = (date: Date | null): string => {
   margin-bottom: 2rem !important;
 }
 
+/* Opciones de verificación */
+.verification-options {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.verification-options h2 {
+  text-align: center;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.verification-options > p {
+  text-align: center;
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.verification-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.verification-card {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.verification-card:hover {
+  border-color: var(--wa-green);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.card-icon {
+  font-size: 3rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.verification-card h3 {
+  color: #333;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.verification-card p {
+  color: #666;
+  text-align: center;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.verification-card ul {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.verification-card li {
+  color: #555;
+  margin-bottom: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+  font-size: 0.9rem;
+}
+
+.verification-card li:before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--wa-green);
+  font-weight: bold;
+}
+
+.card-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: var(--wa-green);
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
 .btn-primary {
   background: var(--wa-green);
   color: white;
@@ -178,6 +330,14 @@ const formatDate = (date: Date | null): string => {
   
   .already-verified {
     padding: 2rem 1rem;
+  }
+  
+  .verification-cards {
+    grid-template-columns: 1fr;
+  }
+  
+  .verification-card {
+    padding: 1rem;
   }
 }
 </style>

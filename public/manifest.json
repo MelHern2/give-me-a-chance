@@ -1,0 +1,70 @@
+{
+  "name": "Give me a chance",
+  "short_name": "Give me a chance",
+  "description": "Encuentra tu pareja ideal basándote en tus preferencias y valores",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ece5dd",
+  "theme_color": "#075e54",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "es",
+  "categories": ["social", "dating"],
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.ico",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Explorar Perfiles",
+      "short_name": "Perfiles",
+      "description": "Descubre personas cerca de ti",
+      "url": "/profiles",
+      "icons": [
+        {
+          "src": "/favicon.ico",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Ver Matches",
+      "short_name": "Matches",
+      "description": "Revisa tus conexiones",
+      "url": "/matches",
+      "icons": [
+        {
+          "src": "/favicon.ico",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Mi Perfil",
+      "short_name": "Perfil",
+      "description": "Actualiza tu información",
+      "url": "/profile",
+      "icons": [
+        {
+          "src": "/favicon.ico",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+} 

@@ -1,16 +1,22 @@
 <template>
-  <div class="chat-modal-overlay">
+  <div :class="['chat-modal-overlay', { 'standalone': !props.onClose }]">
     <div class="chat-modal">
       <header class="chat-header">
         <button class="close-btn" @click="onClose">×</button>
         <div class="user-header-info">
-          <img v-if="userProfile?.photos && userProfile.photos.length > 0" :src="userProfile.photos[0]" class="avatar" alt="Foto de perfil" />
+          <img 
+            :src="userProfile?.photos && userProfile.photos.length > 0 ? userProfile.photos[0] : '/default-avatar.svg'" 
+            class="avatar" 
+            alt="Foto de perfil" 
+            @click="goToUserProfile(effectiveUserId)" 
+            style="cursor:pointer;" 
+          />
           <div class="user-header-text">
             <div class="user-name-age">
-              <span class="user-name">{{ userProfile?.name }}</span>
+              <span class="user-name">{{ userProfile?.name || 'Sin nombre' }}</span>
               <span v-if="userProfile?.age" class="user-age">, {{ userProfile.age }}</span>
             </div>
-            <span class="city">{{ userProfile?.city }}</span>
+            <span class="city">{{ userProfile?.city || 'Sin ciudad' }}</span>
           </div>
         </div>
       </header>
@@ -55,11 +61,13 @@ import { getProfileById } from '@/services/profiles';
 import { useAuthStore } from '@/stores/auth';
 import EmojiPicker from 'vue3-emoji-picker';
 import 'vue3-emoji-picker/css';
+import { useRouter, useRoute } from 'vue-router';
+import { useNotificationsStore } from '@/stores/notifications';
 
 const props = defineProps<{
-  matchId: string;
-  userId: string;
-  onClose: () => void;
+  matchId?: string;
+  userId?: string;
+  onClose?: () => void;
 }>();
 
 const authStore = useAuthStore();
@@ -73,6 +81,13 @@ const messagesContainer = ref<HTMLElement | null>(null);
 const hasMore = ref(true);
 let unsubscribe: (() => void) | null = null;
 const showEmojiPicker = ref(false);
+const router = useRouter();
+const notificationsStore = useNotificationsStore();
+
+// Obtener userId del query parameter si no viene como prop
+const route = useRoute();
+const effectiveUserId = props.userId || route.query.userId as string;
+const effectiveMatchId = props.matchId || route.params.matchId as string;
 
 const PAGE_SIZE = 20;
 
@@ -83,12 +98,20 @@ const formatDate = (date: any) => {
 };
 
 const loadUserProfile = async () => {
-  if (props.userId) {
-    userProfile.value = await getProfileById(props.userId);
+  if (effectiveUserId) {
+    userProfile.value = await getProfileById(effectiveUserId);
   }
 };
 
 const loadMessages = async (initial = false) => {
+  // Validar que matchId no sea undefined
+  if (!effectiveMatchId) {
+    console.error('❌ Error: matchId es undefined/null en loadMessages');
+    loading.value = false;
+    loadingMore.value = false;
+    return;
+  }
+  
   if ((initial && loading.value) || (!initial && loadingMore.value)) return;
   if (initial) {
     loading.value = true;
@@ -98,22 +121,33 @@ const loadMessages = async (initial = false) => {
   } else {
     loadingMore.value = true;
   }
+  
+  console.log('📥 Cargando mensajes para matchId:', effectiveMatchId);
+  
   // Guardar altura y scroll antes de cargar más mensajes
   let prevHeight = 0;
   if (!initial && messagesContainer.value) {
     prevHeight = messagesContainer.value.scrollHeight;
   }
-  const { messages: msgs, lastDoc: last } = await getMessagesPaginated(props.matchId, PAGE_SIZE, lastDoc.value);
-  const orderedMsgs = msgs.slice().reverse();
-  if (initial) {
-    messages.value = orderedMsgs;
-  } else {
-    messages.value = [...orderedMsgs, ...messages.value];
+  
+  try {
+    const { messages: msgs, lastDoc: last } = await getMessagesPaginated(effectiveMatchId, PAGE_SIZE, lastDoc.value);
+    const orderedMsgs = msgs.slice().reverse();
+    if (initial) {
+      messages.value = orderedMsgs;
+    } else {
+      messages.value = [...orderedMsgs, ...messages.value];
+    }
+    lastDoc.value = last;
+    if (!last || msgs.length < PAGE_SIZE) {
+      hasMore.value = false;
+    }
+    
+    console.log(`✅ Cargados ${orderedMsgs.length} mensajes para matchId: ${effectiveMatchId}`);
+  } catch (error) {
+    console.error('❌ Error cargando mensajes:', error);
   }
-  lastDoc.value = last;
-  if (!last || msgs.length < PAGE_SIZE) {
-    hasMore.value = false;
-  }
+  
   loading.value = false;
   loadingMore.value = false;
   await nextTick();
@@ -129,10 +163,27 @@ const loadMessages = async (initial = false) => {
 
 const send = async () => {
   if (!input.value.trim()) return;
+  
+  // Validar que matchId no sea undefined o null
+  if (!effectiveMatchId) {
+    console.error('❌ Error: matchId es undefined/null al enviar mensaje');
+    notificationsStore.error('Error', 'No se pudo enviar el mensaje. Inténtalo de nuevo.');
+    return;
+  }
+  
+  // Validar que el usuario esté autenticado
+  if (!authStore.user?.id) {
+    console.error('❌ Error: Usuario no autenticado al enviar mensaje');
+    notificationsStore.error('Error', 'Debes estar autenticado para enviar mensajes.');
+    return;
+  }
+  
+  console.log('📤 Enviando mensaje:', { matchId: effectiveMatchId, senderId: authStore.user.id });
+  
   // Optimista: agrega el mensaje localmente para feedback inmediato
   const tempMsg = {
     id: 'temp-' + Date.now(),
-    matchId: props.matchId,
+    matchId: effectiveMatchId,
     senderId: authStore.user.id,
     content: input.value,
     timestamp: new Date(),
@@ -145,7 +196,16 @@ const send = async () => {
   }
   const msgText = input.value;
   input.value = '';
-  await sendMessage(props.matchId, authStore.user.id, msgText);
+  
+  try {
+    await sendMessage(effectiveMatchId, authStore.user.id, msgText);
+    console.log('✅ Mensaje enviado correctamente');
+  } catch (error) {
+    console.error('❌ Error enviando mensaje:', error);
+    // Remover el mensaje temporal si falló
+    messages.value = messages.value.filter(msg => msg.id !== tempMsg.id);
+    notificationsStore.error('Error', 'Error al enviar el mensaje. Inténtalo de nuevo.');
+  }
 };
 
 const onEmojiSelect = (emoji: any) => {
@@ -153,25 +213,57 @@ const onEmojiSelect = (emoji: any) => {
   showEmojiPicker.value = false;
 };
 
+const goToUserProfile = (userId: string) => {
+  router.push(`/user/${userId}`);
+};
+
+const onClose = () => {
+  if (props.onClose) {
+    props.onClose();
+  } else {
+    // Si no hay onClose prop, navegar de vuelta
+    router.back();
+  }
+};
+
 onMounted(async () => {
+  // Validar que matchId no sea undefined
+  if (!effectiveMatchId) {
+    console.error('❌ Error: matchId es undefined/null en onMounted de ChatView');
+    return;
+  }
+  
+  console.log('🚀 ChatView montado con matchId:', effectiveMatchId);
+  
   await loadUserProfile();
   await loadMessages(true);
-  unsubscribe = subscribeToMessages(props.matchId, (msgs) => {
-    // Solo mostrar los últimos PAGE_SIZE mensajes si no hay paginación activa
-    if (!hasMore.value && msgs.length > PAGE_SIZE) {
-      messages.value = msgs.slice(-PAGE_SIZE);
-    } else {
-      messages.value = msgs;
-    }
-    nextTick(() => {
-      if (messagesContainer.value) {
-        messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+  
+  // Solo suscribirse si matchId es válido
+  if (effectiveMatchId) {
+    unsubscribe = subscribeToMessages(effectiveMatchId, (msgs) => {
+      // Solo mostrar los últimos PAGE_SIZE mensajes si no hay paginación activa
+      if (!hasMore.value && msgs.length > PAGE_SIZE) {
+        messages.value = msgs.slice(-PAGE_SIZE);
+      } else {
+        messages.value = msgs;
       }
+      nextTick(() => {
+        if (messagesContainer.value) {
+          messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+        }
+      });
     });
-  });
+  }
 });
 
-watch(() => props.matchId, async () => {
+watch(() => effectiveMatchId, async (newMatchId) => {
+  // Validar que el nuevo matchId no sea undefined
+  if (!newMatchId) {
+    console.error('❌ Error: Nuevo matchId es undefined/null en watcher');
+    return;
+  }
+  
+  console.log('🔄 MatchId cambiado a:', newMatchId);
   await loadUserProfile();
   await loadMessages(true);
 });
@@ -191,6 +283,13 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
 }
+
+.chat-modal-overlay.standalone {
+  position: static;
+  background: none;
+  z-index: auto;
+  display: block;
+}
 .chat-modal {
   background: var(--wa-bg);
   border-radius: var(--wa-radius);
@@ -202,6 +301,14 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   padding: 0;
+}
+
+.chat-modal-overlay.standalone .chat-modal {
+  width: 100%;
+  max-width: 100%;
+  height: 100vh;
+  border-radius: 0;
+  box-shadow: none;
 }
 @media (max-width: 700px) {
   .chat-modal {
@@ -215,43 +322,60 @@ onUnmounted(() => {
 .chat-header {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   background: var(--wa-green);
   color: #fff;
-  padding: 1rem 1.5rem;
+  padding: 0.7rem 0.8rem;
   border-top-left-radius: var(--wa-radius);
   border-top-right-radius: var(--wa-radius);
-  gap: 1rem;
+  min-height: 44px;
+  min-width: 0;
+  overflow: hidden;
 }
 .close-btn {
+  flex: 0 0 auto;
   background: none;
   border: none;
   color: #fff;
-  font-size: 2rem;
-  margin-right: 1rem;
+  font-size: 1.5rem;
+  margin-right: 0.3rem;
   cursor: pointer;
+  line-height: 1;
+  padding: 0;
 }
 .user-header-info {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
 }
 .avatar {
-  width: 44px;
-  height: 44px;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid var(--wa-green-light);
   background: #fff;
+  margin-right: 0.3rem;
 }
 .user-header-text {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: center;
+  font-size: 1rem;
 }
 .user-name-age {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .user-name {
   font-weight: 700;
@@ -260,9 +384,12 @@ onUnmounted(() => {
   font-weight: 400;
 }
 .city {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   color: var(--wa-gray);
   font-weight: 400;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .messages-container {
   flex: 1;
@@ -297,28 +424,172 @@ onUnmounted(() => {
 }
 .input-row {
   display: flex;
-  padding: 1rem 1.2rem;
+  align-items: center;
+  padding: 0.7rem 0.5rem;
   background: #f7f7f7;
   border-top: 1px solid #ddd;
   position: relative;
-  gap: 0.5rem;
+  gap: 0.2rem;
 }
+
 .input-row input {
-  flex: 1;
-  padding: 0.5rem 1rem;
+  flex: 1 1 0%;
+  min-width: 60px;
+  max-width: 100%;
+  padding: 0.7rem 1rem;
   border-radius: 2rem;
   border: 1px solid var(--wa-gray);
-  margin-right: 0.5rem;
   font-size: 1rem;
+  background: #fff;
+  margin: 0 0.1rem;
+  box-sizing: border-box;
+  display: block;
+  z-index: 10;
 }
+
 .input-row button {
   background: var(--wa-green);
   color: #fff;
   border: none;
   border-radius: 2rem;
-  padding: 0.5rem 1.2rem;
+  padding: 0.5rem 0.8rem;
   font-size: 1rem;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  max-width: 48px;
+  min-width: 36px;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.emoji-btn {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  padding: 0.3rem;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+  max-width: 36px;
+  min-width: 30px;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emoji-btn:hover {
+  background-color: rgba(0,0,0,0.1);
+}
+
+@media (max-width: 700px) {
+  .chat-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 0.4rem 0.4rem !important;
+    min-height: 38px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    gap: 0 !important;
+    background: var(--wa-green) !important;
+  }
+  .close-btn {
+    width: 32px !important;
+    min-width: 32px !important;
+    max-width: 32px !important;
+    height: 32px !important;
+    min-height: 32px !important;
+    max-height: 32px !important;
+    flex: 0 0 32px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 1.2rem !important;
+    margin-right: 0.2rem !important;
+    padding: 0 !important;
+    border: none !important;
+    background: none !important;
+    color: #fff !important;
+  }
+  .user-header-info {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    overflow: hidden !important;
+    gap: 0.2rem !important;
+    background: none !important;
+    border: none !important;
+  }
+  .avatar {
+    flex: 0 0 auto !important;
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    max-width: 28px !important;
+    max-height: 28px !important;
+    margin-right: 0.2rem !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    border: 2px solid var(--wa-green-light) !important;
+    background: #fff !important;
+  }
+  .user-header-text {
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    font-size: 0.95rem !important;
+    color: #fff !important;
+    background: none !important;
+    border: none !important;
+  }
+  .user-name-age {
+    font-size: 0.95rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+  .city {
+    font-size: 0.75rem !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .input-row {
+    padding: 0.5rem 0.5rem;
+    gap: 0.1rem;
+  }
+  .input-row input {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.95rem;
+    min-width: 0;
+    margin: 0 0.1rem;
+  }
+  .input-row button {
+    padding: 0.5rem 0.6rem;
+    font-size: 0.9rem;
+    min-width: 34px;
+    min-height: 34px;
+  }
+  .emoji-btn {
+    font-size: 1.1rem;
+    padding: 0.2rem;
+    min-width: 30px;
+    min-height: 30px;
+  }
 }
 .loader {
   text-align: center;
@@ -332,13 +603,6 @@ onUnmounted(() => {
   text-align: center;
   color: #888;
   margin: 2rem 0;
-}
-.emoji-btn {
-  background: none;
-  border: none;
-  font-size: 1.6rem;
-  margin-right: 0.5rem;
-  cursor: pointer;
 }
 .emoji-picker-container {
   position: absolute;

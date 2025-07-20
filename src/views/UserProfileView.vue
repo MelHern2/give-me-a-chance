@@ -152,6 +152,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 import { getProfileById } from '@/services/profiles';
 import { giveLike } from '@/services/likes';
+import { notify } from '@/services/notifications';
 import type { UserProfile } from '@/types';
 
 const route = useRoute();
@@ -232,15 +233,16 @@ const handleLike = async () => {
     if (result.isMatch) {
       console.log('¡Match! ID:', result.matchId);
       // Mostrar notificación de match
-      alert(`¡Match con ${profile.value.name}!`);
+        notify.matchCreated();
     } else {
       console.log('Like enviado, esperando respuesta');
+        notify.likeSent();
     }
     
     router.go(-1); // Volver a la lista de perfiles
   } catch (error) {
     console.error('Error al dar like:', error);
-    alert('Error al enviar el like');
+      notify.error('Error de Like', 'Error al enviar el like');
   }
 };
 

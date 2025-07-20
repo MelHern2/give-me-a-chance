@@ -1,46 +1,80 @@
-import axios from 'axios';
-
-// Configuración de ImageKit
-const IMAGEKIT_URL = 'https://upload.imagekit.io/api/v1/files/upload';
-const IMAGEKIT_PUBLIC_KEY = 'public_KoFPHuSF5OiuarsOdzPfczHX1ik='; // Tu public key
-const IMAGEKIT_URL_ENDPOINT = 'https://ik.imagekit.io/ppimw7trl'; // Tu endpoint
-
-export interface ImageKitResponse {
-  fileId: string;
-  name: string;
+export interface ImageUploadResponse {
   url: string;
-  thumbnailUrl: string;
-  height: number;
-  width: number;
-  size: number;
-  filePath: string;
-  fileType: string;
+  path: string;
 }
+
+// Convertir archivo a Base64
+const convertFileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
+// Comprimir imagen para reducir tamaño
+const compressImage = (file: File, maxWidth: number = 800): Promise<File> => {
+  return new Promise((resolve) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    
+    img.onload = () => {
+      // Calcular nuevas dimensiones manteniendo proporción
+      const ratio = Math.min(maxWidth / img.width, maxWidth / img.height);
+      const newWidth = img.width * ratio;
+      const newHeight = img.height * ratio;
+      
+      canvas.width = newWidth;
+      canvas.height = newHeight;
+      
+      // Dibujar imagen redimensionada
+      ctx?.drawImage(img, 0, 0, newWidth, newHeight);
+      
+      // Convertir a blob
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const compressedFile = new File([blob], file.name, {
+            type: 'image/jpeg',
+            lastModified: Date.now()
+          });
+          resolve(compressedFile);
+        } else {
+          resolve(file); // Fallback al archivo original
+        }
+      }, 'image/jpeg', 0.8); // Calidad 80%
+    };
+    
+    img.src = URL.createObjectURL(file);
+  });
+};
 
 export const uploadImageToImageKit = async (file: File): Promise<string> => {
   try {
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('fileName', `dating-app-${Date.now()}-${file.name}`);
-    formData.append('folder', 'dating-app'); // Opcional: organizar en carpetas
+    console.log('📤 Iniciando procesamiento de imagen...');
+    
+    // Comprimir imagen si es muy grande
+    let processedFile = file;
+    if (file.size > 1024 * 1024) { // Si es mayor a 1MB
+      console.log('🔄 Comprimiendo imagen...');
+      processedFile = await compressImage(file);
+      console.log('✅ Imagen comprimida');
+    }
+    
+    // Convertir a Base64
+    console.log('🔄 Convirtiendo a Base64...');
+    const base64Data = await convertFileToBase64(processedFile);
+    console.log('✅ Imagen convertida a Base64');
 
-    // Autenticación: Basic base64(publicKey:)
-    const auth = btoa(`${IMAGEKIT_PUBLIC_KEY}:`);
-
-    const response = await axios.post<ImageKitResponse>(IMAGEKIT_URL, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'Authorization': `Basic ${auth}`,
-      },
-    });
-
-    return response.data.url; // Retorna la URL pública de la imagen
+    return base64Data;
   } catch (error) {
-    console.error('Error uploading image to ImageKit:', error);
-    throw new Error('Failed to upload image');
+    console.error('❌ Error procesando imagen:', error);
+    throw new Error('Error al procesar la imagen. Inténtalo de nuevo.');
   }
 };
 
+// Función auxiliar para obtener URL de imagen (mantener compatibilidad)
 export const getImageKitUrl = (filePath: string): string => {
-  return `${IMAGEKIT_URL_ENDPOINT}/${filePath}`;
+  return filePath; // Base64 ya es la URL completa
 }; 

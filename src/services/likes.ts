@@ -1,4 +1,4 @@
-import { collection, getDocs, addDoc, query, where, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc, query, where, serverTimestamp, doc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/config/firebase';
 import { createMatch } from './matches';
 import { notifyNewLike, notifyNewMatch } from './notifications';
@@ -156,6 +156,55 @@ export const getLikesGiven = async (userId: string): Promise<Like[]> => {
     return likes;
   } catch (error) {
     console.error('Error getting likes given:', error);
+    throw error;
+  }
+};
+
+// Eliminar like entre dos usuarios
+export const removeLike = async (fromUserId: string, toUserId: string): Promise<void> => {
+  try {
+    console.log('🗑️ removeLike: Eliminando like de', fromUserId, 'a', toUserId);
+    
+    const likesRef = collection(db, 'likes');
+    const likeQuery = query(
+      likesRef,
+      where('fromUserId', '==', fromUserId),
+      where('toUserId', '==', toUserId)
+    );
+    const likeSnapshot = await getDocs(likeQuery);
+    
+    if (likeSnapshot.empty) {
+      console.log('⚠️ No se encontró like para eliminar');
+      return;
+    }
+    
+    // Eliminar todos los likes encontrados (debería ser solo uno)
+    const deletePromises = likeSnapshot.docs.map(doc => 
+      deleteDoc(doc.ref)
+    );
+    await Promise.all(deletePromises);
+    
+    console.log('✅ Like eliminado correctamente');
+  } catch (error) {
+    console.error('❌ Error removing like:', error);
+    throw error;
+  }
+};
+
+// Eliminar todos los likes entre dos usuarios (bidireccional)
+export const removeAllLikesBetweenUsers = async (userA: string, userB: string): Promise<void> => {
+  try {
+    console.log('🗑️ removeAllLikesBetweenUsers: Eliminando likes entre', userA, 'y', userB);
+    
+    // Eliminar likes de A a B
+    await removeLike(userA, userB);
+    
+    // Eliminar likes de B a A
+    await removeLike(userB, userA);
+    
+    console.log('✅ Todos los likes entre usuarios eliminados');
+  } catch (error) {
+    console.error('❌ Error removing all likes between users:', error);
     throw error;
   }
 }; 
